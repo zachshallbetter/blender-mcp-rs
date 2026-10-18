@@ -5,6 +5,32 @@ All notable changes to `blender-mcp-rs` will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html) under the governance of `VERSIONING.md` and `AUTHORITY.md`.
 
+## [0.4.0] - 2026-10-17
+
+### Added
+- **Full 100% Canonical Feature & Tool Parity (31 Tools Total)**:
+  - Added `describe_node_type`: Shader & Geometry node socket and property introspection without scene mutation.
+  - Added `bpy_api_lookup`: Real-time structured RNA documentation, signature, and property lookup.
+  - Added `get_screenshot_of_area`: Targeted editor area screenshot capture (`VIEW_3D`, `NODE_EDITOR`, `OUTLINER`, etc.).
+  - Added `check_missing_files`: Fast C-level datablock audit for missing external files and textures.
+  - Added `focus_object` & `focus_object_data`: Object and data block framing and selection in the 3D viewport.
+  - Added `jump_to_tab_by_space_type`: Workspace switching by space type.
+  - Added `render_thumbnail_to_path` & `render_viewport_to_path`: Fast thumbnail generation and full scene rendering.
+  - Added `record_trajectory_feedback`: Thread-safe local trajectory feedback recorder for agent evaluation with zero external telemetry.
+  - Added `synthesize_biological_mat` & `synthesize_biological_mat_tool`: Procedural reed colonies (Phragmites), fungal networks, and mycelium mats.
+  - Added `inspect_semantic_asset` & `inspect_semantic_asset_tool`: Native glTF container inspection extracting sockets, colliders, materials, and manifest metadata.
+  - Added `get_addon_status`: Connected status, protocol version, and capability reporting.
+  - Added `disable_telemetry`: Doctrinal zero-telemetry assurance.
+  - Added `search_assets`, `import_asset`, `texture_mesh_hunyuan3d`, `generate_3d`, and `compile_semantic_preset_tool`.
+  - Added canonical legacy aliases for `audit_game_asset_tool`, `rig_game_item_tool`, `generate_prop_lods_and_pbr_tool`, `craft_hero_prop_tool`, `synthesize_desert_flora_tool`, and `compose_assembly_grammar_tool`.
+- **Companion Addon Upgrade**:
+  - Upgraded `addon/blender_mcp` to v0.4.0 supporting all 16 Blender-side socket commands.
+
+### Verification Status
+- **Implemented**: All 7 workspace crates and companion Blender 4.0+ addon.
+- **Tested**: 19 unit and integration tests passing 100% across workspace with 0 compiler and 0 clippy warnings.
+- **Empirically Validated**: Tested RNA introspection, camera orbit, viewport rendering, safe mode sandbox, and client manager configurations.
+
 ## [0.3.0] - 2026-10-17
 
 ### Added

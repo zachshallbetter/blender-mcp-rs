@@ -97,6 +97,23 @@ pub struct GameAssetManifest {
     pub lod_levels: Vec<String>,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SemanticAssetReport {
+    pub file_path: String,
+    pub root_node: Option<String>,
+    pub total_nodes: usize,
+    pub total_triangles: usize,
+    pub total_vertices: usize,
+    pub meshes: Vec<String>,
+    pub materials: Vec<String>,
+    pub sockets: Vec<String>,
+    pub colliders: Vec<String>,
+    pub bounding_box_min: [f32; 3],
+    pub bounding_box_max: [f32; 3],
+    pub dimensions: [f32; 3],
+    pub manifest: Option<serde_json::Value>,
+}
+
 pub struct ModelAuditor;
 
 impl ModelAuditor {
@@ -176,6 +193,103 @@ impl ModelAuditor {
             dimensions,
             passes_game_ready_check,
             warnings,
+        })
+    }
+
+    pub fn inspect_semantic_asset(path: impl AsRef<Path>) -> Result<SemanticAssetReport, GeomError> {
+        let path_ref = path.as_ref();
+        let (document, buffers, _images) = gltf::import(path_ref)?;
+
+        let mut total_triangles = 0;
+        let mut total_vertices = 0;
+        let mut min_bound = [f32::INFINITY; 3];
+        let mut max_bound = [f32::NEG_INFINITY; 3];
+
+        for mesh in document.meshes() {
+            for primitive in mesh.primitives() {
+                let reader = primitive.reader(|b| Some(&buffers[b.index()]));
+                if let Some(iter) = reader.read_positions() {
+                    for pos in iter {
+                        total_vertices += 1;
+                        for i in 0..3 {
+                            if pos[i] < min_bound[i] { min_bound[i] = pos[i]; }
+                            if pos[i] > max_bound[i] { max_bound[i] = pos[i]; }
+                        }
+                    }
+                }
+                if let Some(indices) = reader.read_indices() {
+                    let count = indices.into_u32().count();
+                    total_triangles += count / 3;
+                }
+            }
+        }
+
+        let mut meshes = Vec::new();
+        let mut sockets = Vec::new();
+        let mut colliders = Vec::new();
+        let mut root_node = None;
+        let mut total_nodes = 0;
+
+        for node in document.nodes() {
+            total_nodes += 1;
+            let name = node.name().unwrap_or("unnamed");
+            if root_node.is_none() && node.camera().is_none() {
+                root_node = Some(name.to_string());
+            }
+            if name.starts_with("SOCKET_") {
+                sockets.push(name.to_string());
+            } else if name.starts_with("UCX_") || name.starts_with("UBX_") || name.starts_with("UCP_") {
+                colliders.push(name.to_string());
+            } else if node.mesh().is_some() {
+                meshes.push(name.to_string());
+            }
+        }
+
+        let materials: Vec<String> = document
+            .materials()
+            .map(|m| m.name().unwrap_or("unnamed_material").to_string())
+            .collect();
+
+        let mut manifest = None;
+        let manifest_candidate = path_ref.with_extension("manifest.json");
+        let dir_manifest = path_ref.parent().map(|p| p.join("manifest.json"));
+
+        if manifest_candidate.exists() {
+            if let Ok(content) = std::fs::read_to_string(&manifest_candidate) {
+                manifest = serde_json::from_str(&content).ok();
+            }
+        } else if let Some(dir_m) = dir_manifest {
+            if dir_m.exists() {
+                if let Ok(content) = std::fs::read_to_string(&dir_m) {
+                    manifest = serde_json::from_str(&content).ok();
+                }
+            }
+        }
+
+        let dimensions = if total_vertices > 0 {
+            [
+                (max_bound[0] - min_bound[0]).abs(),
+                (max_bound[1] - min_bound[1]).abs(),
+                (max_bound[2] - min_bound[2]).abs(),
+            ]
+        } else {
+            [0.0, 0.0, 0.0]
+        };
+
+        Ok(SemanticAssetReport {
+            file_path: path_ref.display().to_string(),
+            root_node,
+            total_nodes,
+            total_triangles,
+            total_vertices,
+            meshes,
+            materials,
+            sockets,
+            colliders,
+            bounding_box_min: if total_vertices > 0 { min_bound } else { [0.0; 3] },
+            bounding_box_max: if total_vertices > 0 { max_bound } else { [0.0; 3] },
+            dimensions,
+            manifest,
         })
     }
 }
