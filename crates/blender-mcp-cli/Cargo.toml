@@ -1,0 +1,25 @@
+[package]
+name = "blender-mcp-cli"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+description = "Unified CLI, multi-agent auto-configurator, and runner for blender-mcp-rs"
+
+[[bin]]
+name = "blender-mcp"
+path = "src/main.rs"
+
+[dependencies]
+blender-mcp-core = { path = "../blender-mcp-core" }
+blender-mcp-protocol = { path = "../blender-mcp-protocol" }
+blender-mcp-geom = { path = "../blender-mcp-geom" }
+blender-mcp-ipc = { path = "../blender-mcp-ipc" }
+
+tokio.workspace = true
+clap.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+tracing.workspace = true
+tracing-subscriber.workspace = true
+anyhow.workspace = true

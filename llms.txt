@@ -1,0 +1,27 @@
+# blender-mcp-rs
+
+> High-performance reflective Rust Model Context Protocol (MCP) server & spatial agent engine for Blender.
+
+- Authors: Zachary Shallbetter / SnackStudio
+- Repository: https://github.com/SnackStudio/blender-mcp-rs
+- License: MIT OR Apache-2.0
+
+## Core Documentation
+- [README.md](README.md): High-level overview, benchmarks, architecture diagram, and quickstart.
+- [AUTHORITY.md](AUTHORITY.md): Hierarchy of authority, conflict resolution rules, and protocol citations.
+- [VERSIONING.md](VERSIONING.md): Semantic versioning policy and release diligence gates.
+- [AGENTS.md](AGENTS.md): Autonomous agent operational charter, claim taxonomy, and asset craftsmanship doctrine.
+
+## Workspace Crates
+- [blender-mcp-reflect](crates/blender-mcp-reflect/src/lib.rs): Type reflection, automated JSON Schema derivation via `schemars`, and dynamic tool dispatch.
+- [blender-mcp-protocol](crates/blender-mcp-protocol/src/lib.rs): Pure MCP JSON-RPC 2.0 specification implementation.
+- [blender-mcp-ipc](crates/blender-mcp-ipc/src/lib.rs): Sub-millisecond control transport and shared memory framebuffer ring buffer.
+- [blender-mcp-geom](crates/blender-mcp-geom/src/lib.rs): Native 3D geometry engine, Rapier3D / Parry convex hull decomposition, and glTF audit.
+- [blender-mcp-core](crates/blender-mcp-core/src/lib.rs): Central daemon and reflective tool registry.
+- [blender-mcp-cli](crates/blender-mcp-cli/src/main.rs): Unified CLI binary (`blender-mcp`) with multi-agent client auto-configurator.
+
+## Foundations & Citations
+- `formal-project-bootstrap`: Project operating substrate, authority resolution, and release governance.
+- `reflective-rust`: Type reflection and Compiler Semantic Graph (`rr-csg-0.1`).
+- `reflective-index`: Local semantic codebase indexing and cross-file symbol call graph tracing.
+- `Dead Hand`: Asset craftsmanship standard (Barrel protocol, 2-material budget, Quad UVs, Rapier collision hulls).

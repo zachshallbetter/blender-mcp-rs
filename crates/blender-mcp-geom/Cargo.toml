@@ -1,0 +1,16 @@
+[package]
+name = "blender-mcp-geom"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+description = "Native 3D geometry engine, glTF audit, and Rapier3D physics hull generator for blender-mcp-rs"
+
+[dependencies]
+glam.workspace = true
+gltf.workspace = true
+parry3d.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+tracing.workspace = true

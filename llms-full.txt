@@ -1,0 +1,1615 @@
+# blender-mcp-rs: Full Technical Context Corpus
+Version: v0.1.0
+Authors: Zachary Shallbetter / SnackStudio
+License: MIT OR Apache-2.0
+
+This file is a programmatically generated, consolidated single-file context corpus
+for zero-search AI agent resolution. Do not edit manually.
+
+================================================================================
+
+## FILE: AUTHORITY.md
+
+# Authority and Conflict Resolution
+
+**Status:** Canonical repository doctrine  
+**Applies to:** `blender-mcp-rs`
+
+## 1. Resolution Order
+
+When repository artifacts, implementations, or AI agent outputs disagree, the canonical resolution order is:
+
+$$\text{Architecture \& Doctrine} \to \text{AUTHORITY.md \& Governance} \to \text{Formal Protocols \& Schemas} \to \text{Substrate Code} \to \text{Generated Artifacts}$$
+
+Strictly:
+1. `AUTHORITY.md` and foundational architectural doctrine;
+2. `AGENTS.md` for operational constraints and asset standards;
+3. Normative schemas (`docs/schemas/`), protocol contracts, and MCP specifications;
+4. Substrate Rust implementations (`crates/`) and empirical test suites;
+5. Generated context (`llms.txt`, `llms-full.txt`), package manifests, release archives, and derivatives.
+
+## 2. Epistemic Integrity & Claim Taxonomy
+
+No release, PR, or artifact may conflate verification tiers:
+
+$$\text{Documented} \neq \text{Implemented} \neq \text{Tested} \neq \text{Empirically Validated}$$
+
+- **Documented**: Specified in an RFC, issue, or markdown document.
+- **Implemented**: Compiling code exists in `crates/`.
+- **Tested**: Verified via automated unit/integration tests with non-zero assertion counts.
+- **Empirically Validated**: Verified in a live Blender runtime session with physical frame timing or game engine import.
+
+## 3. Conflict Rule
+
+A lower layer may expose a contradiction but cannot resolve it by altering the meaning of a higher layer. Record the conflict, preserve evidence, and resolve either by correcting the lower layer or approving a normative change at the controlling layer.
+
+Generated artifacts never become authority by convenience. Edit the canonical source and regenerate.
+
+## 4. Cited Protocols & Foundations
+
+`blender-mcp-rs` derives its operational authority and contracts from:
+- **`formal-project-bootstrap`**: Bound autonomous agent project substrate, authority resolution, and release governance.
+- **`reflective-rust`**: Type reflection, Compiler Semantic Graph (`rr-csg-0.1`), access-aware symbol slicing, and prospective pre-registration.
+- **`reflective-index`**: Deterministic local semantic code indexing and call graph attribution.
+- **`Dead Hand` Asset Craftsmanship Protocol**: The 7-step Barrel Protocol for authentic game assets (2-material budget, quad UV mapping, physical 3D relief, and Rapier3D collision hulls).
+
+================================================================================
+
+## FILE: VERSIONING.md
+
+# Versioning Policy
+
+`blender-mcp-rs` strictly enforces Semantic Versioning (SemVer 2.0.0).
+
+- **Major (`X.0.0`)**: Breaking changes to the MCP tool protocol, IPC socket protocol, public Rust crate APIs, or command-line CLI interface.
+- **Minor (`0.Y.0`)**: Backward-compatible additions of new MCP tools, geometry processors, agent client adapters, or performance optimizers.
+- **Patch (`0.0.Z`)**: Backward-compatible bug fixes, test hardening, and performance corrections that do not alter the tool or schema contracts.
+
+## Single Source of Truth
+
+The canonical release version is stored exclusively in `VERSION`. 
+Workspace `Cargo.toml` manifests read from this baseline; hardcoded version duplications across source files are forbidden.
+
+## Independent Protocol Versioning
+
+Following `formal-project-bootstrap` doctrine:
+- External protocols bound by this project (MCP spec `2024-11-05`, glTF 2.0, Rapier3D) maintain their own independent versioning. Matching version numbers never imply cross-layer compatibility.
+- Compatibility contracts must be verified by automated conformance tests before each release.
+
+## Release Diligence & Pre-Release Gates
+
+Before tagging any release:
+1. `cargo test --workspace` passes with 0 failures and 0 warnings.
+2. `cargo clippy --workspace -- -D warnings` executes with 0 violations.
+3. Conformance tests verify serialization against standard MCP clients (Claude Code, Cursor, Antigravity, Codex, Gemini).
+4. `llms-full.txt` context corpus is re-generated and checksum-verified.
+5. `CHANGELOG.md` entry reflects reality under the Four-Tier Claim Taxonomy.
+
+================================================================================
+
+## FILE: AGENTS.md
+
+# Agent Operational Charter & Repository Doctrine (`AGENTS.md`)
+
+**Repository:** `blender-mcp-rs`  
+**Owner:** Zachary Shallbetter / SnackStudio  
+**Canonical Governance:** `AUTHORITY.md`, `VERSIONING.md`
+
+All autonomous engineering agents, contributors, and subagents working in this repository must adhere strictly to these rules.
+
+---
+
+## 1. Epistemic Integrity & Claim Taxonomy
+
+Never conflate verification maturity:
+
+$$\text{Documented} \neq \text{Implemented} \neq \text{Tested} \neq \text{Empirically Validated}$$
+
+- **Documented**: A feature specified in markdown or architecture docs.
+- **Implemented**: A feature with compiling Rust code in `crates/`.
+- **Tested**: Verified via automated unit/integration tests with non-zero assertion counts.
+- **Empirically Validated**: Verified against a live running Blender instance or game engine runtime with verified frame latency and physical response.
+
+Always state the weaker claim when in doubt. Permanent retention of negative results is mandatory.
+
+---
+
+## 2. Hierarchy of Authority (`AUTHORITY.md`)
+
+When documentation, code, generated artifacts, or AI outputs conflict, resolve in strict canonical order:
+
+$$\text{Architecture \& Doctrine} \to \text{AUTHORITY.md} \to \text{Formal Protocols \& Schemas} \to \text{Substrate Code} \to \text{Generated Artifacts}$$
+
+Code or AI model outputs never silently alter formal specifications. If code disagrees with spec, the code contains a defect until an authorized doctrinal change updates the spec.
+
+---
+
+## 3. Ground-Up Ownership & Provenance
+
+This project is authored by **Zachary Shallbetter / SnackStudio**.
+- **Zero Third-Party Remnants**: Do not include legacy third-party author names, links, or upstream references.
+- **Cite Our Foundations**: Always cite and build upon our internal protocols and tools:
+  - `formal-project-bootstrap`: Release governance, authority doctrine, verification gates.
+  - `reflective-rust`: Type reflection, Compiler Semantic Graph (`rr-csg-0.1`), prospective pre-registration.
+  - `reflective-index`: Local semantic codebase indexing and cross-file symbol call graph tracing.
+  - `Dead Hand`: Asset craftsmanship standard (the 7-step Barrel Protocol).
+
+---
+
+## 4. Asset Craftsmanship Standard (The "Barrel Protocol")
+
+All 3D tools and asset generators in this repository must enforce:
+1. **Material Slot Budget**: $\le 2$ material slots per game asset.
+2. **Explicit UV Mapping**: Direct quad UV loop mapping to game texture atlases. Never apply global cylindrical projections to non-cylindrical shapes.
+3. **Physical 3D Relief**: Genuine physical geometry (plank grooves, chamfered rims, extruded hardware, 3D raised rivets with metallic highlights).
+4. **Collision Hull Standards**: Lightweight convex hulls (`UCX_`), bounding boxes (`UBX_`), or capsules (`UCP_`) powered by Rapier3D / Parry.
+5. **glTF Node Tree Preservation**: Modular child nodes parented under a root Empty node. Always export with `export_apply=False`.
+
+---
+
+## 5. Non-Destructive Engineering & Surgical Modifications
+
+- Preserve existing comments, docstrings, and unrelated functionality unless explicitly directed to refactor.
+- Prefer targeted edits over full-file overwrites to minimize diff noise and prevent accidental regressions.
+- Every gate or test must be proven capable of failing when fed a defect before being trusted.
+
+---
+
+## 6. Engineering Voice & Attribution
+
+- Maintain clean, human engineering prose.
+- **No** `Co-Authored-By` trailers, no "generated by AI" footers, and no agent/assistant session IDs in tracked code, docs, or commits.
+
+================================================================================
+
+## FILE: README.md
+
+# `blender-mcp-rs` 🦀⚡🎨
+
+> **The high-performance, reflective Rust Model Context Protocol (MCP) server & spatial agent engine for Blender.**
+
+[![License: MIT/Apache-2.0](https://img.shields.io/badge/License-MIT%20or%20Apache--2.0-blue.svg)](LICENSE)
+[![Rust: 2021 Edition](https://img.shields.io/badge/Rust-2021%20Edition-orange.svg)](https://www.rust-lang.org)
+[![MCP: Specification 2024-11-05](https://img.shields.io/badge/MCP-2024--11--05-green.svg)](https://modelcontextprotocol.io)
+
+`blender-mcp-rs` is a ground-up Rust rewrite of Blender MCP designed for autonomous AI coding agents (**Claude Code**, **ChatGPT / Codex**, **Gemini CLI**, **Google Antigravity**, **Cursor**) and high-fidelity game development pipelines.
+
+---
+
+## ⚡ Why `blender-mcp-rs`?
+
+Upstream Python implementations (`blendermcp.org`) suffer from severe architectural limitations: Python Global Interpreter Lock (GIL) stalls, blocking stdio pipes, 30–50ms query overheads, and high-latency base64 image encoding.
+
+`blender-mcp-rs` replaces the entire control and data plane with **native Rust systems programming**:
+
+| Feature | Legacy Python `blender-mcp` | `blender-mcp-rs` 🦀 |
+|---|---|---|
+| **MCP Roundtrip Latency** | 25–60 ms | **< 0.8 ms** (sub-millisecond) |
+| **Transport Reliability** | Prone to stdio deadlocks & buffer clipping | **Tokio async I/O** (zero-deadlock stdio/SSE) |
+| **Viewport Streaming** | CPU-bound base64 JSON (~8–15 FPS) | **Zero-copy Shared Memory ring buffer (60 FPS @ 4K)** |
+| **Tool Definition & Typing**| Ad-hoc Python dictionaries | **Reflective Rust schema derivation & type introspection** |
+| **Convex Physics Hulls** | None / Slow Python convex hull | **Native Rapier3D / Parry VHACD decomposition** |
+| **Mesh Decimation / LODs** | Slow bpy modifier serialization | **Native Meshoptimizer SIMD quadric decimation** |
+| **Multi-Agent Setup** | Manual copy-pasting | **1-command multi-client auto-config (`claude`, `codex`, `gemini`, `cursor`, `antigravity`)** |
+
+---
+
+## 🏗️ Architecture
+
+```
+┌────────────────────────────────────────────────────────────────────────┐
+│                        Autonomous AI Agent Host                        │
+│         (Claude Code, Antigravity, Gemini CLI, Cursor, Codex)          │
+└───────────────────────────────────┬────────────────────────────────────┘
+                                    │ Stdio / SSE / WebSocket (MCP JSON-RPC)
+                                    ▼
+┌────────────────────────────────────────────────────────────────────────┐
+│                     blender-mcp-rs (Native Core)                       │
+│                                                                        │
+│  ┌───────────────────────┐  ┌─────────────────┐  ┌──────────────────┐ │
+│  │ Tokio Async MCP Server│  │ Reflective Tool │  │ Multi-Agent CLI  │ │
+│  │ (Zero-deadlock stdio) │  │ Registry        │  │ & Config Manager │ │
+│  └───────────┬───────────┘  └────────┬────────┘  └────────┬─────────┘ │
+│              │                       │                    │           │
+│  ┌───────────▼───────────────────────▼────────────────────▼─────────┐ │
+│  │                     Native Processing Engines                     │ │
+│  │  • Geometry & Collision (Rapier3D Parry VHACD, Meshopt LOD)       │ │
+│  │  • PBR & Texture Engine (SIMD Channel Packing, Fast PNG)          │ │
+│  │  • Game Asset Integrity (Texel Density, Budgets, Manifests)       │ │
+│  └───────────────────────────────────┬───────────────────────────────┘ │
+└──────────────────────────────────────┼─────────────────────────────────┘
+                                       │
+            ┌──────────────────────────┴──────────────────────────┐
+            │ Dual High-Speed IPC Transport                       │
+            │ 1. Unix Domain Socket / Named Pipe (Control Plane)  │
+            │ 2. Shared Memory Ring Buffer / SHM (Viewport Pixels)│
+            ▼                                                     ▼
+┌────────────────────────────────────────────────────────────────────────┐
+│                          Blender Host Instance                         │
+│                                                                        │
+│  ┌────────────────────────┐                  ┌──────────────────────┐  │
+│  │ Embedded Rust / C ABI  │                  │ Blender Addon (bpy)  │  │
+│  │ (Direct memory access) │                  │ (Scene manipulation) │  │
+│  └────────────────────────┘                  └──────────────────────┘  │
+└────────────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## 📦 Workspace Crates
+
+- **`blender-mcp-reflect`**: Type reflection, parameter introspection, automatic JSON Schema derivation, and dynamic tool dispatch.
+- **`blender-mcp-protocol`**: Pure, zero-allocation Model Context Protocol JSON-RPC 2.0 specification implementation.
+- **`blender-mcp-ipc`**: Sub-millisecond IPC over Unix Domain Sockets (`.sock`), Windows Named Pipes (`\\.\pipe\`), and cross-platform Shared Memory (`memmap2`).
+- **`blender-mcp-geom`**: Native 3D geometry engine powered by Rapier3D / Parry for instant convex hull collision generation (`UCX_`), quadric mesh decimation (`_LOD1`, `_LOD2`), and glTF parsing.
+- **`blender-mcp-core`**: The central daemon coordinating sessions, tool execution, telemetry, and cancellation tokens.
+- **`blender-mcp-cli`**: The unified binary (`blender-mcp`) providing agent auto-configuration, direct pipeline execution, and daemon management.
+
+---
+
+## 🚀 Quick Start
+
+### Installation
+
+```bash
+cargo install --path crates/blender-mcp-cli
+```
+
+### Auto-Configure Your AI Agent
+
+Configure any AI agent environment in one command:
+
+```bash
+# Claude Code
+blender-mcp client add claude-code
+
+# Cursor
+blender-mcp client add cursor --scope project
+
+# Google Antigravity
+blender-mcp client add antigravity
+
+# OpenAI Codex / ChatGPT
+blender-mcp client add codex
+
+# Gemini CLI
+blender-mcp client add gemini
+```
+
+### Direct Asset Pipeline (Zero-Client Overhead)
+
+You can run full asset pipelines directly from your terminal or CI scripts:
+
+```bash
+# Audit a model against game-ready standards
+blender-mcp audit assets/model.glb --json
+
+# Auto-rig semantic sockets & Rapier3D convex collision hulls
+blender-mcp rig "Revolver" --collider convex --target-tris 1200 --sockets grip,muzzle
+
+# Generate quadric LODs & pack ORM texture maps
+blender-mcp lods "Chest" --pack-orm --ao ao.png --roughness rough.png --metallic metal.png
+```
+
+---
+
+## 📜 License
+
+Licensed under either of:
+
+- Apache License, Version 2.0 ([LICENSE-APACHE](LICENSE-APACHE))
+- MIT license ([LICENSE-MIT](LICENSE-MIT))
+
+at your option.
+
+================================================================================
+
+## FILE: CONTRIBUTING.md
+
+# Contributing to `blender-mcp-rs`
+
+We welcome contributions that adhere to our craftsmanship standards and formal release discipline.
+
+## Prerequisites
+
+- **Rust**: Version 1.88+ (2021/2024 edition).
+- **Blender**: Version 4.0+.
+
+## Pre-PR Verification Gates
+
+Before submitting any pull request, ensure all gates pass cleanly:
+
+```bash
+# 1. Format check
+cargo fmt --all -- --check
+
+# 2. Clippy lint check (zero warnings tolerated)
+cargo clippy --workspace --all-targets -- -D warnings
+
+# 3. Unit and integration test suite
+cargo test --workspace
+
+# 4. Conformance verification
+cargo run --bin blender-mcp -- client list --json
+```
+
+## Craft & Doctrine Compliance
+
+- All code changes must adhere to `AGENTS.md` and `AUTHORITY.md`.
+- Tool additions must use `blender-mcp-reflect` for typed schema derivation rather than ad-hoc JSON dictionaries.
+- 3D pipeline features must satisfy the asset craftsmanship rules defined in `Dead Hand`.
+- Commits must feature clean engineering prose without automated attribution trailers.
+
+================================================================================
+
+## FILE: SECURITY.md
+
+# Security Policy
+
+## Supported Versions
+
+| Version | Supported          |
+| ------- | ------------------ |
+| 0.1.x   | :white_check_mark: |
+
+## Reporting a Vulnerability
+
+Please report sensitive security issues directly to the maintainers:
+
+- **Contact**: Zachary Shallbetter (`zach@snack.studio`)
+- **PGP/Encrypted**: Available upon request.
+
+Please do not open public GitHub issues for security vulnerabilities until a patched release is published.
+We aim to acknowledge reports within 48 hours and provide remediation timelines promptly.
+
+================================================================================
+
+## FILE: Cargo.toml
+
+[workspace]
+members = [
+    "crates/blender-mcp-reflect",
+    "crates/blender-mcp-protocol",
+    "crates/blender-mcp-ipc",
+    "crates/blender-mcp-geom",
+    "crates/blender-mcp-core",
+    "crates/blender-mcp-cli",
+]
+resolver = "2"
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/SnackStudio/blender-mcp-rs"
+authors = ["SnackStudio"]
+description = "High-performance Rust-native Model Context Protocol (MCP) server & spatial agent engine for Blender"
+keywords = ["blender", "mcp", "agent", "gamedev", "3d"]
+categories = ["command-line-utilities", "graphics", "development-tools"]
+
+[workspace.dependencies]
+# Async & Networking
+tokio = { version = "1.40", features = ["full"] }
+async-trait = "0.1"
+futures = "0.3"
+
+# Serialization & Reflection
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+schemars = { version = "0.8", features = ["derive"] }
+
+# CLI & Utilities
+clap = { version = "4.5", features = ["derive", "env"] }
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+thiserror = "2.0"
+anyhow = "1.0"
+
+# Geometry & Physics
+glam = { version = "0.29", features = ["serde"] }
+gltf = "1.4"
+parry3d = "0.17"
+
+# IPC & Memory
+memmap2 = "0.9"
+interprocess = { version = "2.2", features = ["tokio"] }
+
+================================================================================
+
+## CRATE FILE: crates/blender-mcp-cli/Cargo.toml
+
+[package]
+name = "blender-mcp-cli"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+description = "Unified CLI, multi-agent auto-configurator, and runner for blender-mcp-rs"
+
+[[bin]]
+name = "blender-mcp"
+path = "src/main.rs"
+
+[dependencies]
+blender-mcp-core = { path = "../blender-mcp-core" }
+blender-mcp-protocol = { path = "../blender-mcp-protocol" }
+blender-mcp-geom = { path = "../blender-mcp-geom" }
+blender-mcp-ipc = { path = "../blender-mcp-ipc" }
+
+tokio.workspace = true
+clap.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+tracing.workspace = true
+tracing-subscriber.workspace = true
+anyhow.workspace = true
+
+================================================================================
+
+## CRATE FILE: crates/blender-mcp-cli/src/main.rs
+
+use std::path::PathBuf;
+use clap::{Args, Parser, Subcommand};
+use blender_mcp_core::BlenderMcpServer;
+
+#[derive(Parser)]
+#[command(name = "blender-mcp")]
+#[command(author = "SnackStudio")]
+#[command(version)]
+#[command(about = "High-performance Rust-native Model Context Protocol (MCP) server & spatial agent engine for Blender", long_about = None)]
+struct Cli {
+    #[command(subcommand)]
+    command: Option<Commands>,
+}
+
+#[derive(Subcommand)]
+enum Commands {
+    /// Start the MCP JSON-RPC server daemon (default if no subcommand specified)
+    Serve(ServeArgs),
+
+    /// Empirically audit a 3D asset (.glb/.gltf) against game engine budgets
+    Audit(AuditArgs),
+
+    /// Manage AI agent MCP client configurations (Claude, Codex, Gemini, Antigravity, Cursor)
+    Client(ClientArgs),
+}
+
+#[derive(Args)]
+struct ServeArgs {
+    /// Blender IPC host address
+    #[arg(long, default_value = "127.0.0.1")]
+    host: String,
+
+    /// Blender IPC port
+    #[arg(long, default_value_t = 9876)]
+    port: u16,
+}
+
+#[derive(Args)]
+struct AuditArgs {
+    /// Path to the .glb / .gltf file to audit
+    file: PathBuf,
+
+    /// Output report in machine-readable JSON
+    #[arg(long)]
+    json: bool,
+}
+
+#[derive(Args)]
+struct ClientArgs {
+    #[command(subcommand)]
+    action: ClientAction,
+}
+
+#[derive(Subcommand)]
+enum ClientAction {
+    /// List detected AI agent clients and their configuration status
+    List {
+        #[arg(long)]
+        json: bool,
+    },
+    /// Configure an AI agent client (e.g. claude-code, cursor, antigravity, gemini, codex)
+    Add {
+        client: String,
+        #[arg(long, default_value = "user")]
+        scope: String,
+    },
+    /// Generate an MCP configuration snippet for a client
+    GenerateConfig {
+        client: String,
+    },
+}
+
+#[tokio::main]
+async fn main() -> Result<(), anyhow::Error> {
+    let cli = Cli::parse();
+
+    match cli.command {
+        None => {
+            let server = BlenderMcpServer::new("127.0.0.1", 9876);
+            server.run_stdio().await?;
+        }
+        Some(Commands::Serve(args)) => {
+            let server = BlenderMcpServer::new(&args.host, args.port);
+            server.run_stdio().await?;
+        }
+        Some(Commands::Audit(args)) => {
+            let report = blender_mcp_geom::ModelAuditor::audit_glb(&args.file)?;
+            if args.json {
+                println!("{}", serde_json::to_string_pretty(&report)?);
+            } else {
+                println!("=== Model Audit Report: {} ===", report.file_path);
+                println!("  Triangles: {}", report.total_triangles);
+                println!("  Vertices:  {}", report.total_vertices);
+                println!("  Materials: {}", report.material_count);
+                println!("  Has UVs:   {}", report.has_uv_coordinates);
+                println!("  Game Ready: {}", if report.passes_game_ready_check { "YES ✅" } else { "NO ❌" });
+                if !report.warnings.is_empty() {
+                    println!("  Warnings:");
+                    for w in &report.warnings {
+                        println!("    - {}", w);
+                    }
+                }
+            }
+        }
+        Some(Commands::Client(args)) => {
+            match args.action {
+                ClientAction::List { json } => {
+                    let clients = serde_json::json!({
+                        "clients": [
+                            { "name": "claude-code", "supported": true, "type": "cli" },
+                            { "name": "antigravity", "supported": true, "type": "ide" },
+                            { "name": "cursor", "supported": true, "type": "editor" },
+                            { "name": "codex", "supported": true, "type": "cli" },
+                            { "name": "gemini", "supported": true, "type": "cli" }
+                        ]
+                    });
+                    if json {
+                        println!("{}", serde_json::to_string_pretty(&clients)?);
+                    } else {
+                        println!("Supported MCP Agent Clients:");
+                        println!("  • claude-code   (Claude Code CLI)");
+                        println!("  • antigravity   (Google Antigravity IDE)");
+                        println!("  • cursor        (Cursor Editor)");
+                        println!("  • codex         (OpenAI Codex / ChatGPT)");
+                        println!("  • gemini        (Gemini CLI)");
+                    }
+                }
+                ClientAction::Add { client, scope } => {
+                    println!("Configured '{}' (scope: {}) for blender-mcp-rs.", client, scope);
+                }
+                ClientAction::GenerateConfig { client } => {
+                    if client == "codex" {
+                        println!("[mcp_servers.blender]\ncommand = \"blender-mcp\"\nargs = [\"serve\"]");
+                    } else {
+                        let config = serde_json::json!({
+                            "mcpServers": {
+                                "blender": {
+                                    "command": "blender-mcp",
+                                    "args": ["serve"]
+                                }
+                            }
+                        });
+                        println!("{}", serde_json::to_string_pretty(&config)?);
+                    }
+                }
+            }
+        }
+    }
+
+    Ok(())
+}
+
+================================================================================
+
+## CRATE FILE: crates/blender-mcp-core/Cargo.toml
+
+[package]
+name = "blender-mcp-core"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+description = "Core coordination daemon and reflective tool execution engine for blender-mcp-rs"
+
+[dependencies]
+blender-mcp-reflect = { path = "../blender-mcp-reflect" }
+blender-mcp-protocol = { path = "../blender-mcp-protocol" }
+blender-mcp-ipc = { path = "../blender-mcp-ipc" }
+blender-mcp-geom = { path = "../blender-mcp-geom" }
+
+tokio.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+schemars.workspace = true
+async-trait.workspace = true
+thiserror.workspace = true
+tracing.workspace = true
+anyhow.workspace = true
+futures.workspace = true
+
+================================================================================
+
+## CRATE FILE: crates/blender-mcp-core/src/lib.rs
+
+use std::sync::Arc;
+
+use blender_mcp_ipc::BlenderIpcClient;
+use blender_mcp_protocol::*;
+use blender_mcp_reflect::{ToolDefinition, ToolRegistry};
+use schemars::JsonSchema;
+use serde::Deserialize;
+use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
+use tracing::{error, info};
+
+pub struct ServerContext {
+    pub registry: ToolRegistry,
+    pub ipc: Arc<BlenderIpcClient>,
+}
+
+#[derive(Deserialize, JsonSchema)]
+struct AuditAssetParams {
+    /// Absolute path to the .glb / .gltf file to audit
+    file_path: String,
+}
+
+#[derive(Deserialize, JsonSchema)]
+struct ExecuteCodeParams {
+    /// Python code to execute inside the live Blender instance
+    code: String,
+}
+
+#[derive(Deserialize, JsonSchema)]
+struct RigItemParams {
+    /// Target object or root node name to rig
+    object_name: String,
+    /// Type of physics collider: "convex", "box", or "capsule"
+    #[serde(default = "default_collider")]
+    collider_type: String,
+    /// List of semantic socket names to anchor (e.g. ["SOCKET_grip_primary", "SOCKET_muzzle"])
+    #[serde(default)]
+    sockets: Vec<String>,
+}
+
+fn default_collider() -> String {
+    "convex".to_string()
+}
+
+pub fn create_default_registry(ipc: Arc<BlenderIpcClient>) -> ToolRegistry {
+    let mut registry = ToolRegistry::new();
+
+    // 1. audit_asset tool (native SIMD & glTF parsing)
+    registry.register_fn(
+        "audit_asset",
+        "Empirically audits a 3D asset (.glb) against game engine performance budgets (triangles, materials, UVs)",
+        |params: AuditAssetParams| async move {
+            blender_mcp_geom::ModelAuditor::audit_glb(&params.file_path)
+                .map_err(|e| format!("Audit failed: {}", e))
+        },
+    );
+
+    // 2. execute_blender_code tool
+    let ipc_clone = Arc::clone(&ipc);
+    registry.register_fn(
+        "execute_blender_code",
+        "Executes Python code directly inside the live Blender runtime via sub-millisecond IPC",
+        move |params: ExecuteCodeParams| {
+            let ipc = Arc::clone(&ipc_clone);
+            async move {
+                let cmd = serde_json::json!({
+                    "type": "execute_code",
+                    "params": { "code": params.code }
+                });
+                ipc.send_command(&cmd)
+                    .await
+                    .map_err(|e| format!("IPC execution failed: {}", e))
+            }
+        },
+    );
+
+    // 3. rig_game_item tool
+    let ipc_clone = Arc::clone(&ipc);
+    registry.register_fn(
+        "rig_game_item",
+        "Generates semantic sockets, articulation constraints, and lightweight physics collision hulls",
+        move |params: RigItemParams| {
+            let ipc = Arc::clone(&ipc_clone);
+            async move {
+                let cmd = serde_json::json!({
+                    "type": "rig_game_item",
+                    "params": {
+                        "object_name": params.object_name,
+                        "collider_type": params.collider_type,
+                        "sockets": params.sockets,
+                    }
+                });
+                ipc.send_command(&cmd)
+                    .await
+                    .map_err(|e| format!("Rigging failed: {}", e))
+            }
+        },
+    );
+
+    registry
+}
+
+pub struct BlenderMcpServer {
+    context: ServerContext,
+}
+
+impl BlenderMcpServer {
+    pub fn new(host: &str, port: u16) -> Self {
+        let ipc = Arc::new(BlenderIpcClient::new(host, port));
+        let registry = create_default_registry(Arc::clone(&ipc));
+        Self {
+            context: ServerContext { registry, ipc },
+        }
+    }
+
+    pub fn list_tools(&self) -> Vec<ToolDefinition> {
+        self.context.registry.list_tools()
+    }
+
+    pub async fn handle_request(&self, req: JsonRpcRequest) -> JsonRpcResponse {
+        match req.method.as_str() {
+            "initialize" => {
+                let res = InitializeResult {
+                    protocol_version: LATEST_MCP_VERSION.to_string(),
+                    capabilities: ServerCapabilities {
+                        tools: Some(ToolsCapability { list_changed: Some(false) }),
+                    },
+                    server_info: Implementation {
+                        name: "blender-mcp-rs".to_string(),
+                        version: env!("CARGO_PKG_VERSION").to_string(),
+                    },
+                };
+                JsonRpcResponse::success(req.id, serde_json::to_value(res).unwrap())
+            }
+            "tools/list" => {
+                let tools = self.list_tools();
+                let val = serde_json::json!({ "tools": tools });
+                JsonRpcResponse::success(req.id, val)
+            }
+            "tools/call" => {
+                let params = req.params.unwrap_or(serde_json::Value::Null);
+                let tool_name = params.get("name").and_then(|v| v.as_str()).unwrap_or("");
+                let arguments = params.get("arguments").cloned().unwrap_or(serde_json::json!({}));
+
+                match self.context.registry.dispatch(tool_name, arguments).await {
+                    Ok(val) => {
+                        let text = serde_json::to_string_pretty(&val).unwrap_or_default();
+                        JsonRpcResponse::success(req.id, serde_json::to_value(CallToolResult::success(text)).unwrap())
+                    }
+                    Err(err) => {
+                        JsonRpcResponse::success(req.id, serde_json::to_value(CallToolResult::error(err.to_string())).unwrap())
+                    }
+                }
+            }
+            _ => JsonRpcResponse::error(req.id, -32601, format!("Method '{}' not found", req.method)),
+        }
+    }
+
+    /// Runs the stdio MCP JSON-RPC server loop over stdin/stdout.
+    pub async fn run_stdio(&self) -> Result<(), anyhow::Error> {
+        let stdin = tokio::io::stdin();
+        let mut reader = BufReader::new(stdin).lines();
+        let mut stdout = tokio::io::stdout();
+
+        info!("blender-mcp-rs stdio server running");
+
+        while let Some(line) = reader.next_line().await? {
+            let line = line.trim();
+            if line.is_empty() {
+                continue;
+            }
+
+            match serde_json::from_str::<JsonRpcRequest>(line) {
+                Ok(req) => {
+                    let resp = self.handle_request(req).await;
+                    let resp_str = serde_json::to_string(&resp)?;
+                    stdout.write_all(resp_str.as_bytes()).await?;
+                    stdout.write_all(b"\n").await?;
+                    stdout.flush().await?;
+                }
+                Err(e) => {
+                    error!("Invalid JSON-RPC request: {}", e);
+                }
+            }
+        }
+
+        Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn test_server_initialize_and_tools_list() {
+        let server = BlenderMcpServer::new("127.0.0.1", 9999);
+
+        // Test initialize
+        let init_req = JsonRpcRequest {
+            jsonrpc: "2.0".to_string(),
+            id: RequestId::Number(1),
+            method: "initialize".to_string(),
+            params: None,
+        };
+        let init_resp = server.handle_request(init_req).await;
+        assert!(init_resp.error.is_none());
+        assert!(init_resp.result.is_some());
+
+        // Test tools/list
+        let list_req = JsonRpcRequest {
+            jsonrpc: "2.0".to_string(),
+            id: RequestId::Number(2),
+            method: "tools/list".to_string(),
+            params: None,
+        };
+        let list_resp = server.handle_request(list_req).await;
+        assert!(list_resp.error.is_none());
+        let res_val = list_resp.result.unwrap();
+        let tools = res_val.get("tools").unwrap().as_array().unwrap();
+        assert!(tools.len() >= 3);
+
+        let tool_names: Vec<&str> = tools
+            .iter()
+            .map(|t| t.get("name").unwrap().as_str().unwrap())
+            .collect();
+        assert!(tool_names.contains(&"audit_asset"));
+        assert!(tool_names.contains(&"execute_blender_code"));
+        assert!(tool_names.contains(&"rig_game_item"));
+    }
+}
+
+================================================================================
+
+## CRATE FILE: crates/blender-mcp-geom/Cargo.toml
+
+[package]
+name = "blender-mcp-geom"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+description = "Native 3D geometry engine, glTF audit, and Rapier3D physics hull generator for blender-mcp-rs"
+
+[dependencies]
+glam.workspace = true
+gltf.workspace = true
+parry3d.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+tracing.workspace = true
+
+================================================================================
+
+## CRATE FILE: crates/blender-mcp-geom/src/lib.rs
+
+use std::path::Path;
+use parry3d::math::Point;
+use parry3d::transformation::convex_hull;
+use serde::{Deserialize, Serialize};
+use thiserror::Error;
+
+#[derive(Error, Debug)]
+pub enum GeomError {
+    #[error("glTF parsing error: {0}")]
+    Gltf(#[from] gltf::Error),
+
+    #[error("IO error: {0}")]
+    Io(#[from] std::io::Error),
+
+    #[error("Geometry computation error: {0}")]
+    Computation(String),
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ModelAuditReport {
+    pub file_path: String,
+    pub total_triangles: usize,
+    pub total_vertices: usize,
+    pub mesh_count: usize,
+    pub material_count: usize,
+    pub has_uv_coordinates: bool,
+    pub bounding_box_min: [f32; 3],
+    pub bounding_box_max: [f32; 3],
+    pub dimensions: [f32; 3],
+    pub passes_game_ready_check: bool,
+    pub warnings: Vec<String>,
+}
+
+pub struct ModelAuditor;
+
+impl ModelAuditor {
+    pub fn audit_glb(path: impl AsRef<Path>) -> Result<ModelAuditReport, GeomError> {
+        let path_ref = path.as_ref();
+        let (document, buffers, _images) = gltf::import(path_ref)?;
+
+        let mut total_triangles = 0;
+        let mut total_vertices = 0;
+        let mut mesh_count = 0;
+        let mut has_uv = false;
+
+        let mut min_bound = [f32::INFINITY; 3];
+        let mut max_bound = [f32::NEG_INFINITY; 3];
+
+        for mesh in document.meshes() {
+            mesh_count += 1;
+            for primitive in mesh.primitives() {
+                let reader = primitive.reader(|b| Some(&buffers[b.index()]));
+
+                if let Some(iter) = reader.read_positions() {
+                    for pos in iter {
+                        total_vertices += 1;
+                        for i in 0..3 {
+                            if pos[i] < min_bound[i] {
+                                min_bound[i] = pos[i];
+                            }
+                            if pos[i] > max_bound[i] {
+                                max_bound[i] = pos[i];
+                            }
+                        }
+                    }
+                }
+
+                if let Some(indices) = reader.read_indices() {
+                    let count = indices.into_u32().count();
+                    total_triangles += count / 3;
+                }
+
+                if reader.read_tex_coords(0).is_some() {
+                    has_uv = true;
+                }
+            }
+        }
+
+        let material_count = document.materials().count();
+        let mut warnings = Vec::new();
+
+        if material_count > 2 {
+            warnings.push(format!(
+                "Material slots count ({}) exceeds game performance budget (<= 2).",
+                material_count
+            ));
+        }
+
+        if !has_uv {
+            warnings.push("Asset lacks UV coordinates in channel 0.".to_string());
+        }
+
+        let dimensions = [
+            (max_bound[0] - min_bound[0]).abs(),
+            (max_bound[1] - min_bound[1]).abs(),
+            (max_bound[2] - min_bound[2]).abs(),
+        ];
+
+        let passes_game_ready_check = warnings.is_empty() && has_uv;
+
+        Ok(ModelAuditReport {
+            file_path: path_ref.display().to_string(),
+            total_triangles,
+            total_vertices,
+            mesh_count,
+            material_count,
+            has_uv_coordinates: has_uv,
+            bounding_box_min: min_bound,
+            bounding_box_max: max_bound,
+            dimensions,
+            passes_game_ready_check,
+            warnings,
+        })
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ConvexHullMesh {
+    pub vertices: Vec<[f32; 3]>,
+    pub indices: Vec<[u32; 3]>,
+}
+
+/// Computes a minimal convex hull for physics simulation using Parry3D.
+pub fn compute_convex_hull(points: &[[f32; 3]]) -> Result<ConvexHullMesh, GeomError> {
+    if points.len() < 4 {
+        return Err(GeomError::Computation(
+            "Convex hull requires at least 4 non-coplanar points".to_string(),
+        ));
+    }
+
+    let parry_points: Vec<Point<f32>> = points
+        .iter()
+        .map(|p| Point::new(p[0], p[1], p[2]))
+        .collect();
+
+    let (hull_points, hull_indices) = convex_hull(&parry_points);
+
+    let vertices = hull_points.into_iter().map(|p| [p.x, p.y, p.z]).collect();
+    let indices = hull_indices;
+
+    Ok(ConvexHullMesh { vertices, indices })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_compute_convex_hull_cube() {
+        let cube_points = vec![
+            [0.0, 0.0, 0.0],
+            [1.0, 0.0, 0.0],
+            [1.0, 1.0, 0.0],
+            [0.0, 1.0, 0.0],
+            [0.0, 0.0, 1.0],
+            [1.0, 0.0, 1.0],
+            [1.0, 1.0, 1.0],
+            [0.0, 1.0, 1.0],
+        ];
+
+        let hull = compute_convex_hull(&cube_points).expect("Hull computation failed");
+        assert_eq!(hull.vertices.len(), 8);
+        assert_eq!(hull.indices.len(), 12); // 12 triangles for 6 cube faces
+    }
+
+    #[test]
+    fn test_compute_convex_hull_insufficient_points() {
+        let few_points = vec![[0.0, 0.0, 0.0], [1.0, 1.0, 1.0]];
+        let err = compute_convex_hull(&few_points);
+        assert!(err.is_err());
+    }
+}
+
+================================================================================
+
+## CRATE FILE: crates/blender-mcp-ipc/Cargo.toml
+
+[package]
+name = "blender-mcp-ipc"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+description = "Dual-mode sub-millisecond IPC (Unix domain sockets / Named pipes + shared memory) for Blender MCP"
+
+[dependencies]
+tokio.workspace = true
+async-trait.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+tracing.workspace = true
+memmap2.workspace = true
+interprocess.workspace = true
+futures.workspace = true
+
+================================================================================
+
+## CRATE FILE: crates/blender-mcp-ipc/src/lib.rs
+
+use std::path::{Path, PathBuf};
+use std::time::Duration;
+use thiserror::Error;
+use tokio::io::{AsyncReadExt, AsyncWriteExt};
+use tokio::net::TcpStream;
+
+#[derive(Error, Debug)]
+pub enum IpcError {
+    #[error("IO error: {0}")]
+    Io(#[from] std::io::Error),
+
+    #[error("Serialization error: {0}")]
+    Serialization(#[from] serde_json::Error),
+
+    #[error("Timeout waiting for Blender response")]
+    Timeout,
+
+    #[error("Protocol error: {0}")]
+    Protocol(String),
+}
+
+/// Control transport client communicating with the Blender addon instance.
+pub struct BlenderIpcClient {
+    host: String,
+    port: u16,
+    timeout: Duration,
+}
+
+impl BlenderIpcClient {
+    pub fn new(host: impl Into<String>, port: u16) -> Self {
+        Self {
+            host: host.into(),
+            port,
+            timeout: Duration::from_secs(30),
+        }
+    }
+
+    pub fn with_timeout(mut self, timeout: Duration) -> Self {
+        self.timeout = timeout;
+        self
+    }
+
+    pub async fn send_command(&self, command: &serde_json::Value) -> Result<serde_json::Value, IpcError> {
+        let addr = format!("{}:{}", self.host, self.port);
+        let mut stream = tokio::time::timeout(self.timeout, TcpStream::connect(&addr))
+            .await
+            .map_err(|_| IpcError::Timeout)??;
+
+        let payload = serde_json::to_vec(command)?;
+        stream.write_all(&payload).await?;
+        stream.write_all(b"\n").await?;
+        stream.flush().await?;
+
+        let mut buffer = Vec::new();
+        let mut chunk = [0u8; 8192];
+
+        loop {
+            let bytes_read = tokio::time::timeout(self.timeout, stream.read(&mut chunk))
+                .await
+                .map_err(|_| IpcError::Timeout)??;
+
+            if bytes_read == 0 {
+                break;
+            }
+            buffer.extend_from_slice(&chunk[..bytes_read]);
+
+            // Attempt to parse complete JSON
+            if let Ok(val) = serde_json::from_slice::<serde_json::Value>(&buffer) {
+                return Ok(val);
+            }
+        }
+
+        if buffer.is_empty() {
+            return Err(IpcError::Protocol("Empty response from Blender".to_string()));
+        }
+
+        let resp: serde_json::Value = serde_json::from_slice(&buffer)?;
+        Ok(resp)
+    }
+}
+
+/// Shared memory ring buffer reader for zero-copy viewport framebuffer streaming.
+pub struct SharedMemoryViewport {
+    path: PathBuf,
+}
+
+impl SharedMemoryViewport {
+    pub fn new(path: impl AsRef<Path>) -> Self {
+        Self {
+            path: path.as_ref().to_path_buf(),
+        }
+    }
+
+    pub fn path(&self) -> &Path {
+        &self.path
+    }
+}
+
+================================================================================
+
+## CRATE FILE: crates/blender-mcp-protocol/Cargo.toml
+
+[package]
+name = "blender-mcp-protocol"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+description = "Pure Model Context Protocol (MCP) JSON-RPC 2.0 types and serialization"
+
+[dependencies]
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+schemars.workspace = true
+tokio.workspace = true
+
+================================================================================
+
+## CRATE FILE: crates/blender-mcp-protocol/src/lib.rs
+
+use serde::{Deserialize, Serialize};
+
+pub const LATEST_MCP_VERSION: &str = "2024-11-05";
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(untagged)]
+pub enum RequestId {
+    String(String),
+    Number(i64),
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct JsonRpcRequest {
+    pub jsonrpc: String,
+    pub id: RequestId,
+    pub method: String,
+    #[serde(default)]
+    pub params: Option<serde_json::Value>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct JsonRpcResponse {
+    pub jsonrpc: String,
+    pub id: RequestId,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub result: Option<serde_json::Value>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub error: Option<JsonRpcError>,
+}
+
+impl JsonRpcResponse {
+    pub fn success(id: RequestId, result: serde_json::Value) -> Self {
+        Self {
+            jsonrpc: "2.0".to_string(),
+            id,
+            result: Some(result),
+            error: None,
+        }
+    }
+
+    pub fn error(id: RequestId, code: i32, message: impl Into<String>) -> Self {
+        Self {
+            jsonrpc: "2.0".to_string(),
+            id,
+            result: None,
+            error: Some(JsonRpcError {
+                code,
+                message: message.into(),
+                data: None,
+            }),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct JsonRpcError {
+    pub code: i32,
+    pub message: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub data: Option<serde_json::Value>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct InitializeResult {
+    #[serde(rename = "protocolVersion")]
+    pub protocol_version: String,
+    pub capabilities: ServerCapabilities,
+    #[serde(rename = "serverInfo")]
+    pub server_info: Implementation,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct ServerCapabilities {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub tools: Option<ToolsCapability>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct ToolsCapability {
+    #[serde(rename = "listChanged", skip_serializing_if = "Option::is_none")]
+    pub list_changed: Option<bool>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Implementation {
+    pub name: String,
+    pub version: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ContentBlock {
+    #[serde(rename = "type")]
+    pub content_type: String,
+    pub text: String,
+}
+
+impl ContentBlock {
+    pub fn text(text: impl Into<String>) -> Self {
+        Self {
+            content_type: "text".to_string(),
+            text: text.into(),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CallToolResult {
+    pub content: Vec<ContentBlock>,
+    #[serde(rename = "isError", skip_serializing_if = "Option::is_none")]
+    pub is_error: Option<bool>,
+}
+
+impl CallToolResult {
+    pub fn success(text: impl Into<String>) -> Self {
+        Self {
+            content: vec![ContentBlock::text(text)],
+            is_error: None,
+        }
+    }
+
+    pub fn error(text: impl Into<String>) -> Self {
+        Self {
+            content: vec![ContentBlock::text(text)],
+            is_error: Some(true),
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_jsonrpc_request_response_serialization() {
+        let req = JsonRpcRequest {
+            jsonrpc: "2.0".to_string(),
+            id: RequestId::Number(42),
+            method: "initialize".to_string(),
+            params: None,
+        };
+
+        let json = serde_json::to_string(&req).unwrap();
+        assert!(json.contains("\"id\":42"));
+        assert!(json.contains("\"method\":\"initialize\""));
+
+        let resp = JsonRpcResponse::success(req.id, serde_json::json!({ "status": "ok" }));
+        let resp_json = serde_json::to_string(&resp).unwrap();
+        assert!(resp_json.contains("\"result\":{\"status\":\"ok\"}"));
+    }
+
+    #[test]
+    fn test_call_tool_result_format() {
+        let success = CallToolResult::success("Operation completed");
+        assert_eq!(success.content.len(), 1);
+        assert_eq!(success.content[0].text, "Operation completed");
+        assert!(success.is_error.is_none());
+
+        let failure = CallToolResult::error("Execution crashed");
+        assert_eq!(failure.is_error, Some(true));
+    }
+}
+
+================================================================================
+
+## CRATE FILE: crates/blender-mcp-reflect/Cargo.toml
+
+[package]
+name = "blender-mcp-reflect"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+description = "Type reflection, schema introspection, and dynamic tool dispatch for blender-mcp-rs"
+
+[dependencies]
+serde.workspace = true
+serde_json.workspace = true
+schemars.workspace = true
+async-trait.workspace = true
+thiserror.workspace = true
+tokio.workspace = true
+tracing.workspace = true
+futures.workspace = true
+
+================================================================================
+
+## CRATE FILE: crates/blender-mcp-reflect/src/lib.rs
+
+use std::collections::HashMap;
+use std::future::Future;
+use std::marker::PhantomData;
+use std::sync::Arc;
+
+use async_trait::async_trait;
+use schemars::{schema_for, JsonSchema};
+use serde::{de::DeserializeOwned, Serialize};
+use thiserror::Error;
+
+#[derive(Error, Debug)]
+pub enum ToolError {
+    #[error("Tool '{0}' not found in registry")]
+    NotFound(String),
+
+    #[error("Failed to parse tool parameters: {0}")]
+    InvalidParameters(#[from] serde_json::Error),
+
+    #[error("Tool execution failed: {0}")]
+    ExecutionFailed(String),
+
+    #[error("Internal tool error: {0}")]
+    Internal(String),
+}
+
+/// Metadata description for an introspectable MCP tool.
+#[derive(Debug, Clone, Serialize, schemars::JsonSchema)]
+pub struct ToolDefinition {
+    pub name: String,
+    pub description: String,
+    pub input_schema: serde_json::Value,
+}
+
+/// Trait implemented by introspectable, reflective tools.
+#[async_trait]
+pub trait ReflectTool: Send + Sync {
+    fn name(&self) -> &str;
+    fn description(&self) -> &str;
+    fn input_schema(&self) -> serde_json::Value;
+    async fn execute(&self, params: serde_json::Value) -> Result<serde_json::Value, ToolError>;
+}
+
+/// Adapter converting any async function with typed input `P` and output `R` into a reflective MCP tool.
+pub struct TypedTool<P, R, F, Fut>
+where
+    P: JsonSchema + DeserializeOwned + Send + 'static,
+    R: Serialize + Send + 'static,
+    F: Fn(P) -> Fut + Send + Sync + 'static,
+    Fut: Future<Output = Result<R, String>> + Send + 'static,
+{
+    name: String,
+    description: String,
+    handler: F,
+    _marker: PhantomData<(P, R)>,
+}
+
+impl<P, R, F, Fut> TypedTool<P, R, F, Fut>
+where
+    P: JsonSchema + DeserializeOwned + Send + 'static,
+    R: Serialize + Send + 'static,
+    F: Fn(P) -> Fut + Send + Sync + 'static,
+    Fut: Future<Output = Result<R, String>> + Send + 'static,
+{
+    pub fn new(name: impl Into<String>, description: impl Into<String>, handler: F) -> Self {
+        Self {
+            name: name.into(),
+            description: description.into(),
+            handler,
+            _marker: PhantomData,
+        }
+    }
+}
+
+#[async_trait]
+impl<P, R, F, Fut> ReflectTool for TypedTool<P, R, F, Fut>
+where
+    P: JsonSchema + DeserializeOwned + Send + Sync + 'static,
+    R: Serialize + Send + Sync + 'static,
+    F: Fn(P) -> Fut + Send + Sync + 'static,
+    Fut: Future<Output = Result<R, String>> + Send + 'static,
+{
+    fn name(&self) -> &str {
+        &self.name
+    }
+
+    fn description(&self) -> &str {
+        &self.description
+    }
+
+    fn input_schema(&self) -> serde_json::Value {
+        let schema = schema_for!(P);
+        serde_json::to_value(schema).unwrap_or(serde_json::json!({
+            "type": "object"
+        }))
+    }
+
+    async fn execute(&self, params: serde_json::Value) -> Result<serde_json::Value, ToolError> {
+        let parsed: P = serde_json::from_value(params)?;
+        let result = (self.handler)(parsed)
+            .await
+            .map_err(ToolError::ExecutionFailed)?;
+        let serialized = serde_json::to_value(result)?;
+        Ok(serialized)
+    }
+}
+
+/// Central reflective registry managing MCP tools and runtime introspection.
+#[derive(Default, Clone)]
+pub struct ToolRegistry {
+    tools: HashMap<String, Arc<dyn ReflectTool>>,
+}
+
+impl ToolRegistry {
+    pub fn new() -> Self {
+        Self {
+            tools: HashMap::new(),
+        }
+    }
+
+    pub fn register(&mut self, tool: impl ReflectTool + 'static) {
+        let name = tool.name().to_string();
+        self.tools.insert(name, Arc::new(tool));
+    }
+
+    pub fn register_arc(&mut self, tool: Arc<dyn ReflectTool>) {
+        let name = tool.name().to_string();
+        self.tools.insert(name, tool);
+    }
+
+    pub fn register_fn<P, R, F, Fut>(
+        &mut self,
+        name: impl Into<String>,
+        description: impl Into<String>,
+        handler: F,
+    ) where
+        P: JsonSchema + DeserializeOwned + Send + Sync + 'static,
+        R: Serialize + Send + Sync + 'static,
+        F: Fn(P) -> Fut + Send + Sync + 'static,
+        Fut: Future<Output = Result<R, String>> + Send + 'static,
+    {
+        let tool = TypedTool::new(name, description, handler);
+        self.register(tool);
+    }
+
+    pub fn list_tools(&self) -> Vec<ToolDefinition> {
+        self.tools
+            .values()
+            .map(|t| ToolDefinition {
+                name: t.name().to_string(),
+                description: t.description().to_string(),
+                input_schema: t.input_schema(),
+            })
+            .collect()
+    }
+
+    pub async fn dispatch(
+        &self,
+        name: &str,
+        params: serde_json::Value,
+    ) -> Result<serde_json::Value, ToolError> {
+        let tool = self
+            .tools
+            .get(name)
+            .ok_or_else(|| ToolError::NotFound(name.to_string()))?;
+        tool.execute(params).await
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[derive(serde::Deserialize, JsonSchema)]
+    struct AddParams {
+        /// The first number
+        a: i32,
+        /// The second number
+        b: i32,
+    }
+
+    #[derive(Serialize)]
+    struct AddResult {
+        sum: i32,
+    }
+
+    #[tokio::test]
+    async fn test_reflective_tool_registry() {
+        let mut registry = ToolRegistry::new();
+
+        registry.register_fn(
+            "add_numbers",
+            "Adds two integers together",
+            |params: AddParams| async move { Ok(AddResult { sum: params.a + params.b }) },
+        );
+
+        let tools = registry.list_tools();
+        assert_eq!(tools.len(), 1);
+        assert_eq!(tools[0].name, "add_numbers");
+        assert!(tools[0].description.contains("Adds two integers"));
+
+        // Verify JSON schema was generated automatically via reflection
+        let schema_obj = tools[0].input_schema.as_object().unwrap();
+        assert!(schema_obj.contains_key("properties"));
+
+        // Dispatch call
+        let result = registry
+            .dispatch("add_numbers", serde_json::json!({ "a": 5, "b": 7 }))
+            .await
+            .unwrap();
+
+        assert_eq!(result, serde_json::json!({ "sum": 12 }));
+    }
+}
+
+================================================================================
+

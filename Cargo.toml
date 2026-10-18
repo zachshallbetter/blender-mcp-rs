@@ -1,0 +1,47 @@
+[workspace]
+members = [
+    "crates/blender-mcp-reflect",
+    "crates/blender-mcp-protocol",
+    "crates/blender-mcp-ipc",
+    "crates/blender-mcp-geom",
+    "crates/blender-mcp-core",
+    "crates/blender-mcp-cli",
+]
+resolver = "2"
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/SnackStudio/blender-mcp-rs"
+authors = ["Zachary Shallbetter <zach@snack.studio>", "SnackStudio"]
+description = "High-performance Rust-native Model Context Protocol (MCP) server & spatial agent engine for Blender"
+keywords = ["blender", "mcp", "agent", "gamedev", "3d"]
+categories = ["command-line-utilities", "graphics", "development-tools"]
+
+[workspace.dependencies]
+# Async & Networking
+tokio = { version = "1.40", features = ["full"] }
+async-trait = "0.1"
+futures = "0.3"
+
+# Serialization & Reflection
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+schemars = { version = "0.8", features = ["derive"] }
+
+# CLI & Utilities
+clap = { version = "4.5", features = ["derive", "env"] }
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+thiserror = "2.0"
+anyhow = "1.0"
+
+# Geometry & Physics
+glam = { version = "0.29", features = ["serde"] }
+gltf = "1.4"
+parry3d = "0.17"
+
+# IPC & Memory
+memmap2 = "0.9"
+interprocess = { version = "2.2", features = ["tokio"] }

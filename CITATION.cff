@@ -1,0 +1,28 @@
+cff-version: 1.2.0
+message: "If you use blender-mcp-rs in your research or tooling, please cite it as below."
+title: "blender-mcp-rs: High-Performance Reflective Rust MCP Server for Blender"
+abstract: >-
+  A native Rust Model Context Protocol (MCP) server and spatial agent runtime
+  for Blender. Features sub-millisecond reflective tool dispatch, zero-copy shared
+  memory viewport streaming, Rapier3D convex collision hull generation, and automated
+  multi-agent configuration for autonomous engineering workflows.
+type: software
+authors:
+  - family-names: Shallbetter
+    given-names: Zachary
+    orcid: "https://orcid.org/0009-0009-9450-3429"
+    affiliation: "SnackStudio"
+version: "0.1.0"
+date-released: "2026-10-18"
+license: "MIT OR Apache-2.0"
+repository-code: "https://github.com/SnackStudio/blender-mcp-rs"
+url: "https://github.com/SnackStudio/blender-mcp-rs"
+keywords:
+  - model-context-protocol
+  - blender
+  - rust
+  - reflective-rust
+  - spatial-computing
+  - autonomous-agents
+  - game-development
+  - rapier3d

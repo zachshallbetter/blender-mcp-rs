@@ -1,0 +1,23 @@
+[package]
+name = "blender-mcp-core"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+description = "Core coordination daemon and reflective tool execution engine for blender-mcp-rs"
+
+[dependencies]
+blender-mcp-reflect = { path = "../blender-mcp-reflect" }
+blender-mcp-protocol = { path = "../blender-mcp-protocol" }
+blender-mcp-ipc = { path = "../blender-mcp-ipc" }
+blender-mcp-geom = { path = "../blender-mcp-geom" }
+
+tokio.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+schemars.workspace = true
+async-trait.workspace = true
+thiserror.workspace = true
+tracing.workspace = true
+anyhow.workspace = true
+futures.workspace = true
