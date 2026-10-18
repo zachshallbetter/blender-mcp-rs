@@ -2,7 +2,7 @@
 
 **Epic:** EPIC-3 (Live Shared Memory Viewport Streaming)  
 **Owner:** A (Autonomous Agent)  
-**Status:** todo  
+**Status:** done  
 **Target:** 2026-10-17  
 
 ---

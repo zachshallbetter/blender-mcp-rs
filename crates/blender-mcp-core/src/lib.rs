@@ -1,11 +1,13 @@
 pub mod sandbox;
 pub mod trajectory;
 pub mod polyhaven;
+pub mod viewport_template;
 
 use std::collections::HashMap;
 use std::sync::Arc;
 
-use blender_mcp_ipc::BlenderIpcClient;
+use base64::prelude::*;
+use blender_mcp_ipc::{BlenderIpcClient, SharedMemoryViewport};
 use blender_mcp_protocol::*;
 use blender_mcp_reflect::{ToolDefinition, ToolRegistry};
 use schemars::JsonSchema;
@@ -285,6 +287,82 @@ struct Generate3dParams {
 }
 
 fn default_provider() -> String { "local_procedural".to_string() }
+
+#[derive(Deserialize, JsonSchema)]
+struct StartViewportStreamParams {
+    /// Shared memory buffer file path (default: /tmp/blender_mcp_shm_viewport)
+    #[serde(default = "default_shm_path")]
+    shm_path: String,
+    /// Target frame rate in FPS (default: 30, max: 60)
+    #[serde(default = "default_stream_fps")]
+    fps: u32,
+    /// Buffer capacity in bytes (default: 16777216 = 16MB)
+    #[serde(default = "default_shm_capacity")]
+    capacity: usize,
+}
+
+fn default_shm_path() -> String { "/tmp/blender_mcp_shm_viewport".to_string() }
+fn default_stream_fps() -> u32 { 30 }
+fn default_shm_capacity() -> usize { 16 * 1024 * 1024 }
+
+#[derive(Deserialize, JsonSchema)]
+struct StopViewportStreamParams {}
+
+#[derive(Deserialize, JsonSchema)]
+struct ReadViewportFrameParams {
+    /// Shared memory buffer file path (default: /tmp/blender_mcp_shm_viewport)
+    #[serde(default = "default_shm_path")]
+    shm_path: String,
+    /// Whether to encode pixel payload into a base64 string
+    #[serde(default)]
+    include_base64: bool,
+}
+
+#[derive(Deserialize, JsonSchema)]
+struct ApplySceneCsgParams {
+    /// CSG operation: "union", "difference", "intersect", or "snap_to_socket"
+    operation: String,
+    /// Target object name
+    target_object: String,
+    /// Operand object name
+    operand_object: String,
+    /// Optional socket name on target object
+    socket_name: Option<String>,
+    /// Boolean solver ("FAST" or "EXACT", default "FAST")
+    #[serde(default = "default_solver")]
+    solver: String,
+}
+
+fn default_solver() -> String { "FAST".to_string() }
+
+#[derive(Deserialize, JsonSchema)]
+struct GenerateLodsParams {
+    /// Target mesh object name
+    object_name: String,
+    /// Decimation ratios for LOD tiers (default: [1.0, 0.5, 0.25, 0.1])
+    #[serde(default = "default_lod_ratios")]
+    lod_ratios: Vec<f32>,
+    /// Collision hull type: "convex_hull", "box", or "none"
+    #[serde(default = "default_collision_type")]
+    collision_type: String,
+}
+
+fn default_lod_ratios() -> Vec<f32> { vec![1.0, 0.5, 0.25, 0.1] }
+fn default_collision_type() -> String { "convex_hull".to_string() }
+
+#[derive(Deserialize, JsonSchema)]
+struct GenerateArmatureRigParams {
+    /// Target object to rig
+    target_object: String,
+    /// Rig template: "prop_container", "mechanical_door", or "biped"
+    #[serde(default = "default_rig_template")]
+    rig_template: String,
+    /// Whether to bind mesh with armature deform modifier
+    #[serde(default = "default_true")]
+    bind_mesh: bool,
+}
+
+fn default_rig_template() -> String { "prop_container".to_string() }
 
 pub fn create_default_registry(ipc: Arc<BlenderIpcClient>, trajectory: Arc<TrajectoryRecorder>) -> ToolRegistry {
     let mut registry = ToolRegistry::new();
@@ -1011,6 +1089,142 @@ pub fn create_default_registry(ipc: Arc<BlenderIpcClient>, trajectory: Arc<Traje
         },
     );
 
+    // 32. start_viewport_stream tool
+    let ipc_start_stream = Arc::clone(&ipc);
+    registry.register_fn(
+        "start_viewport_stream",
+        "Starts high-frequency zero-copy viewport streaming from Blender to shared memory (/tmp/blender_mcp_shm_viewport)",
+        move |params: StartViewportStreamParams| {
+            let ipc = Arc::clone(&ipc_start_stream);
+            async move {
+                let cmd = serde_json::json!({
+                    "type": "start_viewport_stream",
+                    "params": {
+                        "shm_path": params.shm_path,
+                        "fps": params.fps,
+                        "capacity": params.capacity,
+                    }
+                });
+                ipc.send_command(&cmd).await.map_err(|e| format!("Failed to start viewport stream: {}", e))
+            }
+        },
+    );
+
+    // 33. stop_viewport_stream tool
+    let ipc_stop_stream = Arc::clone(&ipc);
+    registry.register_fn(
+        "stop_viewport_stream",
+        "Stops high-frequency viewport streaming to shared memory",
+        move |_params: StopViewportStreamParams| {
+            let ipc = Arc::clone(&ipc_stop_stream);
+            async move {
+                let cmd = serde_json::json!({
+                    "type": "stop_viewport_stream",
+                    "params": {}
+                });
+                ipc.send_command(&cmd).await.map_err(|e| format!("Failed to stop viewport stream: {}", e))
+            }
+        },
+    );
+
+    // 34. read_viewport_frame tool
+    registry.register_fn(
+        "read_viewport_frame",
+        "Reads the latest frame from the shared memory viewport buffer (sub-microsecond zero-copy)",
+        |params: ReadViewportFrameParams| async move {
+            let shm = SharedMemoryViewport::create_or_open(&params.shm_path, 16 * 1024 * 1024)
+                .map_err(|e| format!("Failed to open shared memory viewport: {}", e))?;
+            match shm.read_latest_frame().map_err(|e| format!("Read frame error: {}", e))? {
+                Some(frame) => {
+                    let b64 = if params.include_base64 {
+                        Some(BASE64_STANDARD.encode(&frame.pixels))
+                    } else {
+                        None
+                    };
+                    Ok(serde_json::json!({
+                        "status": "success",
+                        "sequence": frame.sequence,
+                        "width": frame.width,
+                        "height": frame.height,
+                        "channels": frame.channels,
+                        "timestamp_ns": frame.timestamp_ns,
+                        "data_size": frame.pixels.len(),
+                        "base64_pixels": b64,
+                    }))
+                }
+                None => Ok(serde_json::json!({
+                    "status": "waiting_for_frame",
+                    "message": "Shared memory buffer is open, waiting for first frame write"
+                }))
+            }
+        },
+    );
+
+    // 35. apply_scene_csg tool
+    let ipc_csg = Arc::clone(&ipc);
+    registry.register_fn(
+        "apply_scene_csg",
+        "Applies live CSG boolean operations (union, difference, intersect) or snaps objects to semantic sockets",
+        move |params: ApplySceneCsgParams| {
+            let ipc = Arc::clone(&ipc_csg);
+            async move {
+                let cmd = serde_json::json!({
+                    "type": "apply_scene_csg",
+                    "params": {
+                        "operation": params.operation,
+                        "target_object": params.target_object,
+                        "operand_object": params.operand_object,
+                        "socket_name": params.socket_name,
+                        "solver": params.solver,
+                    }
+                });
+                ipc.send_command(&cmd).await.map_err(|e| format!("CSG operation failed: {}", e))
+            }
+        },
+    );
+
+    // 36. generate_lods_and_collision tool
+    let ipc_lods = Arc::clone(&ipc);
+    registry.register_fn(
+        "generate_lods_and_collision",
+        "Generates tiered Levels of Detail (LOD0 through LOD3) and physics collision hulls (UCX_*) for game engines",
+        move |params: GenerateLodsParams| {
+            let ipc = Arc::clone(&ipc_lods);
+            async move {
+                let cmd = serde_json::json!({
+                    "type": "generate_lods_and_collision",
+                    "params": {
+                        "object_name": params.object_name,
+                        "lod_ratios": params.lod_ratios,
+                        "collision_type": params.collision_type,
+                    }
+                });
+                ipc.send_command(&cmd).await.map_err(|e| format!("LOD generation failed: {}", e))
+            }
+        },
+    );
+
+    // 37. generate_armature_rig tool
+    let ipc_arm = Arc::clone(&ipc);
+    registry.register_fn(
+        "generate_armature_rig",
+        "Generates a bone armature hierarchy and binds geometry with automatic vertex group skinning",
+        move |params: GenerateArmatureRigParams| {
+            let ipc = Arc::clone(&ipc_arm);
+            async move {
+                let cmd = serde_json::json!({
+                    "type": "generate_armature_rig",
+                    "params": {
+                        "target_object": params.target_object,
+                        "rig_template": params.rig_template,
+                        "bind_mesh": params.bind_mesh,
+                    }
+                });
+                ipc.send_command(&cmd).await.map_err(|e| format!("Armature rigging failed: {}", e))
+            }
+        },
+    );
+
     registry
 }
 
@@ -1039,6 +1253,10 @@ impl BlenderMcpServer {
                     protocol_version: LATEST_MCP_VERSION.to_string(),
                     capabilities: ServerCapabilities {
                         tools: Some(ToolsCapability { list_changed: Some(false) }),
+                        resources: Some(ResourcesCapability {
+                            subscribe: Some(false),
+                            list_changed: Some(false),
+                        }),
                     },
                     server_info: Implementation {
                         name: "blender-mcp-rs".to_string(),
@@ -1046,6 +1264,54 @@ impl BlenderMcpServer {
                     },
                 };
                 JsonRpcResponse::success(req.id, serde_json::to_value(res).unwrap())
+            }
+            "resources/list" => {
+                let resources = vec![
+                    ResourceDefinition {
+                        uri: "blender://viewport".to_string(),
+                        name: "Blender Live Viewport".to_string(),
+                        description: Some("Real-time interactive 3D WebGL viewport canvas with camera orbit and raycast pick capabilities".to_string()),
+                        mime_type: Some("text/html".to_string()),
+                    },
+                    ResourceDefinition {
+                        uri: "blender://scene_summary".to_string(),
+                        name: "Blender Scene CSG Summary".to_string(),
+                        description: Some("Active Blender scene graph hierarchy, sockets, materials, and physics collision metrics".to_string()),
+                        mime_type: Some("application/json".to_string()),
+                    },
+                ];
+                let val = serde_json::json!({ "resources": resources });
+                JsonRpcResponse::success(req.id, val)
+            }
+            "resources/read" => {
+                let params = req.params.unwrap_or(serde_json::Value::Null);
+                let uri = params.get("uri").and_then(|v| v.as_str()).unwrap_or("");
+                match uri {
+                    "blender://viewport" => {
+                        let html = viewport_template::generate_viewport_html();
+                        let contents = vec![ResourceContent {
+                            uri: uri.to_string(),
+                            mime_type: Some("text/html".to_string()),
+                            text: Some(html.to_string()),
+                            blob: None,
+                        }];
+                        JsonRpcResponse::success(req.id, serde_json::json!({ "contents": contents }))
+                    }
+                    "blender://scene_summary" => {
+                        let scene_info = self.context.ipc.send_command(&serde_json::json!({
+                            "type": "get_scene_info"
+                        })).await.unwrap_or_else(|_| serde_json::json!({ "status": "disconnected" }));
+                        let text = serde_json::to_string_pretty(&scene_info).unwrap_or_default();
+                        let contents = vec![ResourceContent {
+                            uri: uri.to_string(),
+                            mime_type: Some("application/json".to_string()),
+                            text: Some(text),
+                            blob: None,
+                        }];
+                        JsonRpcResponse::success(req.id, serde_json::json!({ "contents": contents }))
+                    }
+                    _ => JsonRpcResponse::error(req.id, -32602, format!("Resource URI '{}' not found", uri)),
+                }
             }
             "tools/list" => {
                 let tools = self.list_tools();
@@ -1179,5 +1445,44 @@ mod tests {
         assert!(tool_names.contains(&"get_scene_csg"));
         assert!(tool_names.contains(&"synthesize_municipal_prop"));
         assert!(tool_names.contains(&"render_viewport_snapshot"));
+        assert!(tool_names.contains(&"start_viewport_stream"));
+        assert!(tool_names.contains(&"stop_viewport_stream"));
+        assert!(tool_names.contains(&"read_viewport_frame"));
+        assert!(tool_names.contains(&"apply_scene_csg"));
+        assert!(tool_names.contains(&"generate_lods_and_collision"));
+        assert!(tool_names.contains(&"generate_armature_rig"));
+
+        // Test resources/list
+        let res_list_req = JsonRpcRequest {
+            jsonrpc: "2.0".to_string(),
+            id: RequestId::Number(3),
+            method: "resources/list".to_string(),
+            params: None,
+        };
+        let res_list_resp = server.handle_request(res_list_req).await;
+        assert!(res_list_resp.error.is_none());
+        let res_list = res_list_resp.result.unwrap();
+        let resources = res_list.get("resources").unwrap().as_array().unwrap();
+        assert_eq!(resources.len(), 2);
+        assert_eq!(resources[0].get("uri").unwrap(), "blender://viewport");
+        assert_eq!(resources[1].get("uri").unwrap(), "blender://scene_summary");
+
+        // Test resources/read for blender://viewport
+        let res_read_req = JsonRpcRequest {
+            jsonrpc: "2.0".to_string(),
+            id: RequestId::Number(4),
+            method: "resources/read".to_string(),
+            params: Some(serde_json::json!({
+                "uri": "blender://viewport"
+            })),
+        };
+        let res_read_resp = server.handle_request(res_read_req).await;
+        assert!(res_read_resp.error.is_none());
+        let read_val = res_read_resp.result.unwrap();
+        let contents = read_val.get("contents").unwrap().as_array().unwrap();
+        assert_eq!(contents.len(), 1);
+        let html_text = contents[0].get("text").unwrap().as_str().unwrap();
+        assert!(html_text.contains("blender-mcp-rs Live Viewport"));
+        assert!(html_text.contains("viewport-canvas"));
     }
 }

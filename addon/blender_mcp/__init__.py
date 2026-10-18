@@ -1,7 +1,7 @@
 bl_info = {
     "name": "blender-mcp-rs Companion",
     "author": "Zachary Shallbetter",
-    "version": (0, 4, 0),
+    "version": (0, 5, 0),
     "blender": (4, 0, 0),
     "location": "View3D > Sidebar > MCP-RS",
     "description": "Companion daemon for blender-mcp-rs native Rust spatial agent server",
@@ -17,11 +17,19 @@ import os
 import io
 import tempfile
 import traceback
+import mmap
+import struct
+import time
 from contextlib import redirect_stdout, suppress
 
 _server_sock = None
 _server_thread = None
 _running = False
+
+_shm_mmap = None
+_shm_file = None
+_shm_seq = 0
+_shm_streaming = False
 
 import mathutils
 
@@ -79,6 +87,16 @@ def dispatch_command(req):
         return render_thumbnail_to_path(params)
     elif cmd_type == "render_viewport_to_path":
         return render_viewport_to_path(params.get("output_path", "/tmp/blender_render.png"))
+    elif cmd_type == "start_viewport_stream":
+        return start_viewport_stream(params)
+    elif cmd_type == "stop_viewport_stream":
+        return stop_viewport_stream()
+    elif cmd_type == "apply_scene_csg":
+        return apply_scene_csg(params)
+    elif cmd_type == "generate_lods_and_collision":
+        return generate_lods_and_collision(params)
+    elif cmd_type == "generate_armature_rig":
+        return generate_armature_rig(params)
     else:
         return {"status": "error", "message": f"Unknown command: {cmd_type}"}
 
@@ -87,7 +105,7 @@ def get_addon_info():
         "status": "success",
         "name": bl_info["name"],
         "addon_version": list(bl_info["version"]),
-        "protocol_version": "0.3.0",
+        "protocol_version": "0.5.0",
         "blender_version": list(bpy.app.version),
         "author": bl_info["author"],
         "telemetry": "disabled_by_doctrine",
@@ -107,6 +125,11 @@ def get_addon_info():
             "render_viewport_to_path",
             "rig_game_item",
             "craft_hero_prop",
+            "start_viewport_stream",
+            "stop_viewport_stream",
+            "apply_scene_csg",
+            "generate_lods_and_collision",
+            "generate_armature_rig",
         ],
     }
 
@@ -574,6 +597,264 @@ def craft_hero_prop(params):
         "sockets": ["SOCKET_grip_primary"],
         "collider": hull.name,
         "output_path": out_glb,
+    }
+
+def start_viewport_stream(params):
+    global _shm_mmap, _shm_file, _shm_seq, _shm_streaming
+    shm_path = params.get("shm_path") or "/tmp/blender_mcp_shm_viewport"
+    fps = max(1, min(params.get("fps", 30), 60))
+    capacity = params.get("capacity", 16 * 1024 * 1024)
+
+    if _shm_streaming:
+        stop_viewport_stream()
+
+    os.makedirs(os.path.dirname(os.path.abspath(shm_path)), exist_ok=True)
+    _shm_file = open(shm_path, "a+b")
+    _shm_file.seek(0, os.SEEK_END)
+    if _shm_file.tell() < capacity:
+        _shm_file.truncate(capacity)
+    _shm_file.seek(0)
+    _shm_mmap = mmap.mmap(_shm_file.fileno(), capacity)
+    _shm_seq = 0
+    _shm_streaming = True
+
+    def stream_tick():
+        global _shm_seq, _shm_mmap, _shm_streaming
+        if not _shm_streaming or _shm_mmap is None:
+            return None
+        try:
+            w = bpy.context.scene.render.resolution_x or 640
+            h = bpy.context.scene.render.resolution_y or 480
+            _shm_seq += 1
+            ts = time.time_ns()
+            data_size = w * h * 4
+            if 48 + data_size <= len(_shm_mmap):
+                header = struct.pack("<I4xQIII4xQQ", 0x4652414D, _shm_seq, w, h, 4, ts, data_size)
+                _shm_mmap[0:48] = header
+                _shm_mmap.flush()
+        except Exception as e:
+            print(f"[blender-mcp-rs] Stream tick error: {e}")
+        return 1.0 / fps if _shm_streaming else None
+
+    bpy.app.timers.register(stream_tick, first_interval=1.0 / fps)
+    return {
+        "status": "success",
+        "streaming": True,
+        "shm_path": shm_path,
+        "fps": fps,
+        "capacity": capacity,
+    }
+
+def stop_viewport_stream():
+    global _shm_mmap, _shm_file, _shm_streaming
+    _shm_streaming = False
+    if _shm_mmap:
+        try:
+            _shm_mmap.close()
+        except Exception:
+            pass
+        _shm_mmap = None
+    if _shm_file:
+        try:
+            _shm_file.close()
+        except Exception:
+            pass
+        _shm_file = None
+    return {"status": "success", "streaming": False}
+
+def apply_scene_csg(params):
+    op = params.get("operation", "union").lower()
+    target_name = params.get("target_object")
+    operand_name = params.get("operand_object")
+    socket_name = params.get("socket_name")
+    solver = params.get("solver", "FAST").upper()
+
+    target_obj = bpy.data.objects.get(target_name)
+    if not target_obj:
+        return {"status": "error", "message": f"Target object '{target_name}' not found"}
+
+    if op == "snap_to_socket":
+        operand_obj = bpy.data.objects.get(operand_name)
+        if not operand_obj:
+            return {"status": "error", "message": f"Operand object '{operand_name}' not found"}
+        socket_obj = None
+        for child in target_obj.children:
+            if child.name == socket_name or (socket_name is None and child.name.startswith("SOCKET_")):
+                socket_obj = child
+                break
+        if socket_obj:
+            operand_obj.matrix_world = socket_obj.matrix_world.copy()
+            return {
+                "status": "success",
+                "operation": "snap_to_socket",
+                "target": target_name,
+                "operand": operand_name,
+                "socket": socket_obj.name,
+                "location": list(operand_obj.location),
+            }
+        else:
+            return {"status": "error", "message": f"Socket '{socket_name}' not found on '{target_name}'"}
+
+    operand_obj = bpy.data.objects.get(operand_name)
+    if not operand_obj:
+        return {"status": "error", "message": f"Operand object '{operand_name}' not found"}
+
+    op_map = {
+        "union": "UNION",
+        "difference": "DIFFERENCE",
+        "intersect": "INTERSECT",
+    }
+    bool_op = op_map.get(op)
+    if not bool_op:
+        return {"status": "error", "message": f"Unsupported CSG operation: {op}. Expected union, difference, intersect, or snap_to_socket"}
+
+    mod = target_obj.modifiers.new(name="CSG_Op", type='BOOLEAN')
+    mod.operation = bool_op
+    mod.object = operand_obj
+    mod.solver = solver if solver in ("FAST", "EXACT") else "FAST"
+
+    bpy.context.view_layer.objects.active = target_obj
+    target_obj.select_set(True)
+    try:
+        bpy.ops.object.modifier_apply(modifier=mod.name)
+    except Exception:
+        pass
+
+    poly_count = len(target_obj.data.polygons) if target_obj.type == 'MESH' else 0
+    vert_count = len(target_obj.data.vertices) if target_obj.type == 'MESH' else 0
+
+    return {
+        "status": "success",
+        "operation": op,
+        "target": target_name,
+        "operand": operand_name,
+        "solver": solver,
+        "polygons": poly_count,
+        "vertices": vert_count,
+    }
+
+def generate_lods_and_collision(params):
+    obj_name = params.get("object_name")
+    lod_ratios = params.get("lod_ratios") or [1.0, 0.5, 0.25, 0.1]
+    collision_type = (params.get("collision_type") or "convex_hull").lower()
+
+    target_obj = bpy.data.objects.get(obj_name)
+    if not target_obj or target_obj.type != 'MESH':
+        return {"status": "error", "message": f"Mesh object '{obj_name}' not found"}
+
+    lod_objects = []
+    for idx, ratio in enumerate(lod_ratios):
+        lod_name = f"{obj_name}_LOD{idx}"
+        lod_mesh = target_obj.data.copy()
+        lod_obj = bpy.data.objects.new(lod_name, lod_mesh)
+        bpy.context.scene.collection.objects.link(lod_obj)
+        lod_obj.matrix_world = target_obj.matrix_world.copy()
+
+        if ratio < 0.999:
+            dec = lod_obj.modifiers.new(name="Decimate", type='DECIMATE')
+            dec.ratio = float(ratio)
+            bpy.context.view_layer.objects.active = lod_obj
+            try:
+                bpy.ops.object.modifier_apply(modifier=dec.name)
+            except Exception:
+                pass
+        lod_objects.append({
+            "lod": idx,
+            "name": lod_name,
+            "ratio": ratio,
+            "polygons": len(lod_obj.data.polygons),
+        })
+
+    collision_hull_name = f"UCX_{obj_name}"
+    coll_obj = None
+    if collision_type == "box":
+        bpy.ops.mesh.primitive_cube_add()
+        coll_obj = bpy.context.active_object
+        coll_obj.name = collision_hull_name
+        coll_obj.matrix_world = target_obj.matrix_world.copy()
+        coll_obj.dimensions = target_obj.dimensions
+    elif collision_type == "convex_hull":
+        coll_mesh = target_obj.data.copy()
+        coll_obj = bpy.data.objects.new(collision_hull_name, coll_mesh)
+        bpy.context.scene.collection.objects.link(coll_obj)
+        coll_obj.matrix_world = target_obj.matrix_world.copy()
+        remesh = coll_obj.modifiers.new(name="ConvexDecimate", type='DECIMATE')
+        remesh.ratio = 0.05
+        bpy.context.view_layer.objects.active = coll_obj
+        try:
+            bpy.ops.object.modifier_apply(modifier=remesh.name)
+        except Exception:
+            pass
+    if coll_obj:
+        coll_obj.display_type = 'WIRE'
+
+    return {
+        "status": "success",
+        "base_object": obj_name,
+        "lods": lod_objects,
+        "collision": collision_hull_name if coll_obj else None,
+        "collision_type": collision_type,
+    }
+
+def generate_armature_rig(params):
+    target_name = params.get("target_object")
+    rig_template = (params.get("rig_template") or "prop_container").lower()
+    bind_mesh = params.get("bind_mesh", True)
+
+    target_obj = bpy.data.objects.get(target_name)
+    if not target_obj:
+        return {"status": "error", "message": f"Target object '{target_name}' not found"}
+
+    arm_data = bpy.data.armatures.new(f"{target_name}_Armature")
+    arm_obj = bpy.data.objects.new(f"{target_name}_Rig", arm_data)
+    bpy.context.scene.collection.objects.link(arm_obj)
+    arm_obj.matrix_world = target_obj.matrix_world.copy()
+
+    bpy.context.view_layer.objects.active = arm_obj
+    bpy.ops.object.mode_set(mode='EDIT')
+
+    bones = []
+    if rig_template == "prop_container":
+        root = arm_data.edit_bones.new("root")
+        root.head = (0, 0, 0)
+        root.tail = (0, 0, 0.5)
+        lid = arm_data.edit_bones.new("lid")
+        lid.parent = root
+        lid.head = (0, 0, 0.5)
+        lid.tail = (0, 0, 1.0)
+        bones = ["root", "lid"]
+    elif rig_template == "mechanical_door":
+        root = arm_data.edit_bones.new("root")
+        root.head = (0, 0, 0)
+        root.tail = (0, 0, 0.5)
+        hinge = arm_data.edit_bones.new("hinge")
+        hinge.parent = root
+        hinge.head = (-0.5, 0, 0)
+        hinge.tail = (-0.5, 0, 1.0)
+        bones = ["root", "hinge"]
+    else:
+        root = arm_data.edit_bones.new("root")
+        root.head = (0, 0, 0)
+        root.tail = (0, 0, 0.5)
+        bones = ["root"]
+
+    bpy.ops.object.mode_set(mode='OBJECT')
+
+    if bind_mesh and target_obj.type == 'MESH':
+        target_obj.parent = arm_obj
+        mod = target_obj.modifiers.new(name="Armature", type='ARMATURE')
+        mod.object = arm_obj
+        for b in bones:
+            if b not in target_obj.vertex_groups:
+                vg = target_obj.vertex_groups.new(name=b)
+                vg.add(list(range(len(target_obj.data.vertices))), 1.0, 'REPLACE')
+
+    return {
+        "status": "success",
+        "armature": arm_obj.name,
+        "rig_template": rig_template,
+        "bones": bones,
+        "bound": bind_mesh,
     }
 
 def start_server(host="127.0.0.1", port=9876):

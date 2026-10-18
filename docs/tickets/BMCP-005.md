@@ -2,7 +2,7 @@
 
 **Epic:** EPIC-5 (Interactive Web/HTML Viewport Resource)  
 **Owner:** A (Autonomous Agent)  
-**Status:** todo  
+**Status:** done  
 **Target:** 2026-10-17  
 
 ---

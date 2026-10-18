@@ -2,7 +2,7 @@
 
 **Epic:** EPIC-4 (Live Spatial CSG Boolean Operations & Socket Snapping)  
 **Owner:** A (Autonomous Agent)  
-**Status:** todo  
+**Status:** done  
 **Target:** 2026-10-17  
 
 ---
