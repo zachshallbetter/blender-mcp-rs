@@ -258,15 +258,15 @@ Upstream Python implementations (`blendermcp.org`) suffer from severe architectu
 - **`blender-mcp-geom`**: Native 3D geometry engine powered by Rapier3D / Parry for convex collision hulls (`UCX_`, `UBX_`, `UCP_`) and Spatial CSG (`rr-csg-0.1+3d`).
 - **`blender-mcp-pbr`**: SIMD texture channel packing for Ambient Occlusion, Roughness, and Metallic (ORM) maps.
 - **`blender-mcp-synth`**: Procedural asset synthesis engine (desert flora, municipal props, and assembly grammars).
-- **`blender-mcp-core`**: The central daemon coordinating sessions, safe mode sandbox, and the 37-tool reflective registry.
+- **`blender-mcp-core`**: The central daemon coordinating sessions, safe mode sandbox, and the 47-tool reflective registry.
 - **`blender-mcp-cli`**: The unified binary (`blender-mcp`) providing agent auto-configuration, direct pipeline execution, and addon lifecycle management.
 
 ---
 
 ## Documentation
 
-- [**Tool Reference Catalog (`docs/tools.md`)**](docs/tools.md): Complete specification of all 37 reflective tools.
-- [**MCP Resource Provider (`docs/resources.md`)**](docs/resources.md): Interactive WebGL/HTML5 live viewport (`blender://viewport`) and scene CSG graph (`blender://scene_summary`).
+- [**Tool Reference Catalog (`docs/tools.md`)**](docs/tools.md): Complete specification of all 47 reflective tools.
+- [**MCP Resource Provider (`docs/resources.md`)**](docs/resources.md): Interactive WebGL/HTML5 live viewport (`blender://viewport`), scene CSG graph (`blender://scene_summary`), and granular datablock inspectors (`blender://objects/*`, `blender://materials/*`, `blender://collections/*`).
 - [**Architecture & Doctrine (`docs/architecture.md`)**](docs/architecture.md): Dual-transport IPC, zero-copy shared memory streaming, and spatial CSG (`rr-csg-0.1+3d`).
 - [**Blender Companion Addon (`docs/addon.md`)**](docs/addon.md): Installation, headless configuration, and socket daemon setup.
 - [**Game Engine Asset Pipeline (`docs/game-pipeline.md`)**](docs/game-pipeline.md): Multi-LOD decimation, Rapier3D `UCX_*` collision hulls, and SIMD ORM packing.
@@ -481,8 +481,8 @@ anyhow.workspace = true
 
 ## CRATE FILE: crates/blender-mcp-cli/src/addon_manager.rs
 
-use std::path::{Path, PathBuf};
 use serde::{Deserialize, Serialize};
+use std::path::{Path, PathBuf};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct BlenderInstallation {
@@ -578,8 +578,8 @@ pub fn install_addon(target_version: Option<&str>) -> Result<Vec<PathBuf>, std::
 
 ## CRATE FILE: crates/blender-mcp-cli/src/client_manager.rs
 
-use std::path::{Path, PathBuf};
 use serde::{Deserialize, Serialize};
+use std::path::{Path, PathBuf};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ClientInfo {
@@ -718,9 +718,9 @@ mod tests {
 pub mod addon_manager;
 pub mod client_manager;
 
-use std::path::{Path, PathBuf};
-use clap::{Args, Parser, Subcommand};
 use blender_mcp_core::BlenderMcpServer;
+use clap::{Args, Parser, Subcommand};
+use std::path::{Path, PathBuf};
 
 #[derive(Parser)]
 #[command(name = "blender-mcp")]
@@ -757,6 +757,9 @@ enum Commands {
 
     /// Extract a formal 3D Compiler Semantic Graph (rr-csg-0.1+3d) from Blender
     Csg(CsgArgs),
+
+    /// Generate multi-LOD decimation meshes and optional packed ORM textures
+    Lods(LodsArgs),
 
     /// Manage companion Blender addon installation and status
     Addon(AddonArgs),
@@ -877,6 +880,52 @@ struct CsgArgs {
 }
 
 #[derive(Args)]
+struct LodsArgs {
+    /// Name of target object in Blender
+    object_name: String,
+
+    /// Comma-separated decimation ratios (e.g. "1.0,0.5,0.25,0.1")
+    #[arg(long, default_value = "1.0,0.5,0.25,0.1")]
+    ratios: String,
+
+    /// Type of physics collider: "convex_hull", "box", or "capsule"
+    #[arg(long, default_value = "convex_hull")]
+    collider: String,
+
+    /// Pack Ambient Occlusion, Roughness, and Metallic textures into an ORM map
+    #[arg(long)]
+    pack_orm: bool,
+
+    /// Path to Ambient Occlusion map
+    #[arg(long)]
+    ao: Option<PathBuf>,
+
+    /// Path to Roughness map
+    #[arg(long)]
+    roughness: Option<PathBuf>,
+
+    /// Path to Metallic map
+    #[arg(long)]
+    metallic: Option<PathBuf>,
+
+    /// Output destination path for packed ORM map
+    #[arg(long)]
+    output_orm: Option<PathBuf>,
+
+    /// Blender IPC host address
+    #[arg(long, default_value = "127.0.0.1")]
+    host: String,
+
+    /// Blender IPC port
+    #[arg(long, default_value_t = 9876)]
+    port: u16,
+
+    /// Output result in machine-readable JSON
+    #[arg(long)]
+    json: bool,
+}
+
+#[derive(Args)]
 struct ClientArgs {
     #[command(subcommand)]
     action: ClientAction,
@@ -896,9 +945,7 @@ enum ClientAction {
         scope: String,
     },
     /// Generate an MCP configuration snippet for a client
-    GenerateConfig {
-        client: String,
-    },
+    GenerateConfig { client: String },
 }
 
 #[derive(Args)]
@@ -944,7 +991,14 @@ async fn main() -> Result<(), anyhow::Error> {
                 println!("  Vertices:  {}", report.total_vertices);
                 println!("  Materials: {}", report.material_count);
                 println!("  Has UVs:   {}", report.has_uv_coordinates);
-                println!("  Game Ready: {}", if report.passes_game_ready_check { "YES ✅" } else { "NO ❌" });
+                println!(
+                    "  Game Ready: {}",
+                    if report.passes_game_ready_check {
+                        "YES ✅"
+                    } else {
+                        "NO ❌"
+                    }
+                );
                 if !report.warnings.is_empty() {
                     println!("  Warnings:");
                     for w in &report.warnings {
@@ -963,7 +1017,10 @@ async fn main() -> Result<(), anyhow::Error> {
             if args.json {
                 println!("{}", serde_json::to_string_pretty(&res)?);
             } else {
-                println!("Successfully packed ORM texture ({}x{}): {}", res.width, res.height, res.output_path);
+                println!(
+                    "Successfully packed ORM texture ({}x{}): {}",
+                    res.width, res.height, res.output_path
+                );
             }
         }
         Some(Commands::Rig(args)) => {
@@ -996,7 +1053,10 @@ async fn main() -> Result<(), anyhow::Error> {
                 }
             });
             match ipc.send_command(&cmd).await {
-                Ok(resp) => println!("Crafting response: {}", serde_json::to_string_pretty(&resp)?),
+                Ok(resp) => println!(
+                    "Crafting response: {}",
+                    serde_json::to_string_pretty(&resp)?
+                ),
                 Err(e) => eprintln!("Crafting failed: {}", e),
             }
         }
@@ -1014,11 +1074,18 @@ async fn main() -> Result<(), anyhow::Error> {
                     let mut graph = blender_mcp_geom::SpatialCsgGraph::new(&args.source);
                     if let Some(objects) = info.get("objects").and_then(|v| v.as_array()) {
                         for obj in objects {
-                            let name = obj.get("name").and_then(|v| v.as_str()).unwrap_or("unknown");
-                            let obj_type = obj.get("type").and_then(|v| v.as_str()).unwrap_or("EMPTY");
+                            let name = obj
+                                .get("name")
+                                .and_then(|v| v.as_str())
+                                .unwrap_or("unknown");
+                            let obj_type =
+                                obj.get("type").and_then(|v| v.as_str()).unwrap_or("EMPTY");
                             let kind = if name.starts_with("SOCKET_") {
                                 blender_mcp_geom::CsgNodeKind::Socket
-                            } else if name.starts_with("UCX_") || name.starts_with("UBX_") || name.starts_with("UCP_") {
+                            } else if name.starts_with("UCX_")
+                                || name.starts_with("UBX_")
+                                || name.starts_with("UCP_")
+                            {
                                 blender_mcp_geom::CsgNodeKind::Collider
                             } else if obj_type == "MESH" {
                                 blender_mcp_geom::CsgNodeKind::Mesh
@@ -1030,14 +1097,18 @@ async fn main() -> Result<(), anyhow::Error> {
                                 blender_mcp_geom::CsgNodeKind::Object
                             };
 
-                            let id = format!("{}:{}", match kind {
-                                blender_mcp_geom::CsgNodeKind::Socket => "socket",
-                                blender_mcp_geom::CsgNodeKind::Collider => "collider",
-                                blender_mcp_geom::CsgNodeKind::Mesh => "mesh",
-                                blender_mcp_geom::CsgNodeKind::Camera => "camera",
-                                blender_mcp_geom::CsgNodeKind::Light => "light",
-                                _ => "obj",
-                            }, name);
+                            let id = format!(
+                                "{}:{}",
+                                match kind {
+                                    blender_mcp_geom::CsgNodeKind::Socket => "socket",
+                                    blender_mcp_geom::CsgNodeKind::Collider => "collider",
+                                    blender_mcp_geom::CsgNodeKind::Mesh => "mesh",
+                                    blender_mcp_geom::CsgNodeKind::Camera => "camera",
+                                    blender_mcp_geom::CsgNodeKind::Light => "light",
+                                    _ => "obj",
+                                },
+                                name
+                            );
 
                             graph.add_node(blender_mcp_geom::CsgNode {
                                 id,
@@ -1045,7 +1116,10 @@ async fn main() -> Result<(), anyhow::Error> {
                                 kind,
                                 minimum_access: "public".to_string(),
                                 transform: None,
-                                triangle_count: obj.get("polygons").and_then(|v| v.as_u64()).map(|c| c as usize),
+                                triangle_count: obj
+                                    .get("polygons")
+                                    .and_then(|v| v.as_u64())
+                                    .map(|c| c as usize),
                                 metadata: None,
                             });
                         }
@@ -1064,77 +1138,164 @@ async fn main() -> Result<(), anyhow::Error> {
                 Err(e) => eprintln!("Failed to query Blender scene for CSG: {}", e),
             }
         }
-        Some(Commands::Client(args)) => {
-            match args.action {
-                ClientAction::List { json } => {
-                    let clients = client_manager::list_detected_clients();
-                    if json {
-                        println!("{}", serde_json::to_string_pretty(&clients)?);
-                    } else {
-                        println!("Supported & Detected MCP Agent Clients:");
-                        for c in &clients {
-                            let status = if c.is_configured { "configured ✅" } else { "not configured" };
-                            println!("  • {:<15} ({}) - {} [{}]", c.name, c.client_type, c.config_path.display(), status);
-                        }
-                    }
+        Some(Commands::Lods(args)) => {
+            let lod_ratios: Vec<f64> = args
+                .ratios
+                .split(',')
+                .filter_map(|s| s.trim().parse::<f64>().ok())
+                .collect();
+
+            let ipc = blender_mcp_ipc::BlenderIpcClient::new(&args.host, args.port);
+            let cmd = serde_json::json!({
+                "type": "generate_lods_and_collision",
+                "params": {
+                    "object_name": args.object_name,
+                    "lod_ratios": lod_ratios,
+                    "collision_type": args.collider,
+                    "generate_colliders": true,
                 }
-                ClientAction::Add { client, scope } => {
-                    match client_manager::configure_client(&client, &scope) {
-                        Ok(p) => println!("Successfully configured '{}' (scope: {}) at: {}", client, scope, p.display()),
-                        Err(e) => eprintln!("Failed to configure '{}': {}", client, e),
+            });
+
+            let lod_resp = ipc.send_command(&cmd).await;
+
+            let mut orm_result = None;
+            if args.pack_orm {
+                let out_path = args.output_orm.unwrap_or_else(|| {
+                    PathBuf::from(format!("{}_ORM.png", args.object_name))
+                });
+                let pbr_res = blender_mcp_pbr::pack_orm(
+                    args.ao.as_deref(),
+                    args.roughness.as_deref(),
+                    args.metallic.as_deref(),
+                    &out_path,
+                )?;
+                orm_result = Some(pbr_res);
+            }
+
+            if args.json {
+                let mut output = serde_json::json!({
+                    "object_name": args.object_name,
+                    "lod_generation": match &lod_resp {
+                        Ok(v) => v.clone(),
+                        Err(e) => serde_json::json!({ "error": e.to_string() }),
                     }
+                });
+                if let Some(orm) = &orm_result {
+                    output["orm_packing"] = serde_json::to_value(orm)?;
                 }
-                ClientAction::GenerateConfig { client } => {
-                    if client == "codex" {
-                        println!("[mcp_servers.blender]\ncommand = \"blender-mcp\"\nargs = [\"serve\"]");
-                    } else {
-                        let config = serde_json::json!({
-                            "mcpServers": {
-                                "blender": {
-                                    "command": "blender-mcp",
-                                    "args": ["serve"]
-                                }
-                            }
-                        });
-                        println!("{}", serde_json::to_string_pretty(&config)?);
-                    }
+                println!("{}", serde_json::to_string_pretty(&output)?);
+            } else {
+                match lod_resp {
+                    Ok(resp) => println!(
+                        "LOD & Collision Generation: {}",
+                        serde_json::to_string_pretty(&resp)?
+                    ),
+                    Err(e) => eprintln!(
+                        "LOD generation IPC failed (is Blender running with companion addon?): {}",
+                        e
+                    ),
+                }
+                if let Some(orm) = &orm_result {
+                    println!(
+                        "Packed ORM Map ({}x{}): {}",
+                        orm.width, orm.height, orm.output_path
+                    );
                 }
             }
         }
-        Some(Commands::Addon(args)) => {
-            match args.action {
-                AddonAction::Status { json } => {
-                    let installs = addon_manager::detect_blender_installations();
-                    if json {
-                        println!("{}", serde_json::to_string_pretty(&installs)?);
-                    } else {
-                        println!("Detected Blender Installations & Addon Status:");
-                        if installs.is_empty() {
-                            println!("  No installed Blender version directories detected.");
-                        }
-                        for inst in &installs {
-                            let st = if inst.is_addon_installed { "INSTALLED ✅" } else { "NOT INSTALLED ❌" };
-                            println!("  • Blender {:<4} | Addon: {:<17} | Path: {}", inst.version, st, inst.addon_dir.display());
-                        }
-                    }
-                }
-                AddonAction::Install { blender_version } => {
-                    match addon_manager::install_addon(blender_version.as_deref()) {
-                        Ok(paths) => {
-                            if paths.is_empty() {
-                                println!("No matching Blender installation found to install addon.");
-                            } else {
-                                println!("Successfully installed blender-mcp-rs companion addon:");
-                                for p in paths {
-                                    println!("  ✅ {}", p.display());
-                                }
-                            }
-                        }
-                        Err(e) => eprintln!("Failed to install addon: {}", e),
+        Some(Commands::Client(args)) => match args.action {
+            ClientAction::List { json } => {
+                let clients = client_manager::list_detected_clients();
+                if json {
+                    println!("{}", serde_json::to_string_pretty(&clients)?);
+                } else {
+                    println!("Supported & Detected MCP Agent Clients:");
+                    for c in &clients {
+                        let status = if c.is_configured {
+                            "configured ✅"
+                        } else {
+                            "not configured"
+                        };
+                        println!(
+                            "  • {:<15} ({}) - {} [{}]",
+                            c.name,
+                            c.client_type,
+                            c.config_path.display(),
+                            status
+                        );
                     }
                 }
             }
-        }
+            ClientAction::Add { client, scope } => {
+                match client_manager::configure_client(&client, &scope) {
+                    Ok(p) => println!(
+                        "Successfully configured '{}' (scope: {}) at: {}",
+                        client,
+                        scope,
+                        p.display()
+                    ),
+                    Err(e) => eprintln!("Failed to configure '{}': {}", client, e),
+                }
+            }
+            ClientAction::GenerateConfig { client } => {
+                if client == "codex" {
+                    println!(
+                        "[mcp_servers.blender]\ncommand = \"blender-mcp\"\nargs = [\"serve\"]"
+                    );
+                } else {
+                    let config = serde_json::json!({
+                        "mcpServers": {
+                            "blender": {
+                                "command": "blender-mcp",
+                                "args": ["serve"]
+                            }
+                        }
+                    });
+                    println!("{}", serde_json::to_string_pretty(&config)?);
+                }
+            }
+        },
+        Some(Commands::Addon(args)) => match args.action {
+            AddonAction::Status { json } => {
+                let installs = addon_manager::detect_blender_installations();
+                if json {
+                    println!("{}", serde_json::to_string_pretty(&installs)?);
+                } else {
+                    println!("Detected Blender Installations & Addon Status:");
+                    if installs.is_empty() {
+                        println!("  No installed Blender version directories detected.");
+                    }
+                    for inst in &installs {
+                        let st = if inst.is_addon_installed {
+                            "INSTALLED ✅"
+                        } else {
+                            "NOT INSTALLED ❌"
+                        };
+                        println!(
+                            "  • Blender {:<4} | Addon: {:<17} | Path: {}",
+                            inst.version,
+                            st,
+                            inst.addon_dir.display()
+                        );
+                    }
+                }
+            }
+            AddonAction::Install { blender_version } => {
+                match addon_manager::install_addon(blender_version.as_deref()) {
+                    Ok(paths) => {
+                        if paths.is_empty() {
+                            println!("No matching Blender installation found to install addon.");
+                        } else {
+                            println!("Successfully installed blender-mcp-rs companion addon:");
+                            for p in paths {
+                                println!("  ✅ {}", p.display());
+                            }
+                        }
+                    }
+                    Err(e) => eprintln!("Failed to install addon: {}", e),
+                }
+            }
+        },
     }
 
     Ok(())
@@ -1232,9 +1393,9 @@ base64.workspace = true
 
 ## CRATE FILE: crates/blender-mcp-core/src/lib.rs
 
+pub mod polyhaven;
 pub mod sandbox;
 pub mod trajectory;
-pub mod polyhaven;
 pub mod viewport_template;
 
 use std::collections::HashMap;
@@ -1273,10 +1434,18 @@ struct LookParams {
     elevation: f32,
 }
 
-fn default_focus_target() -> String { "active".to_string() }
-fn default_camera_distance() -> f32 { 3.0 }
-fn default_azimuth() -> f32 { 45.0 }
-fn default_elevation() -> f32 { 30.0 }
+fn default_focus_target() -> String {
+    "active".to_string()
+}
+fn default_camera_distance() -> f32 {
+    3.0
+}
+fn default_azimuth() -> f32 {
+    45.0
+}
+fn default_elevation() -> f32 {
+    30.0
+}
 
 #[derive(Deserialize, JsonSchema)]
 struct ViewportSnapshotParams {
@@ -1288,7 +1457,9 @@ struct ViewportSnapshotParams {
     height: u32,
 }
 
-fn default_res() -> u32 { 1080 }
+fn default_res() -> u32 {
+    1080
+}
 
 #[derive(Deserialize, JsonSchema)]
 struct AuditAssetParams {
@@ -1384,8 +1555,12 @@ struct ScreenshotAreaParams {
     save_to: Option<String>,
 }
 
-fn default_area_type() -> String { "VIEW_3D".to_string() }
-fn default_max_size() -> u32 { 1024 }
+fn default_area_type() -> String {
+    "VIEW_3D".to_string()
+}
+fn default_max_size() -> u32 {
+    1024
+}
 
 #[derive(Deserialize, JsonSchema)]
 struct CheckMissingFilesParams {}
@@ -1408,7 +1583,9 @@ struct FocusObjectDataParams {
     allow_edits: bool,
 }
 
-fn default_true() -> bool { true }
+fn default_true() -> bool {
+    true
+}
 
 #[derive(Deserialize, JsonSchema)]
 struct JumpTabParams {
@@ -1431,8 +1608,12 @@ struct RenderThumbnailParams {
     samples: u32,
 }
 
-fn default_thumb_dim() -> u32 { 320 }
-fn default_samples() -> u32 { 16 }
+fn default_thumb_dim() -> u32 {
+    320
+}
+fn default_samples() -> u32 {
+    16
+}
 
 #[derive(Deserialize, JsonSchema)]
 struct RenderViewportToPathParams {
@@ -1487,7 +1668,9 @@ struct SearchAssetsParams {
     limit: usize,
 }
 
-fn default_limit() -> usize { 20 }
+fn default_limit() -> usize {
+    20
+}
 
 #[derive(Deserialize, JsonSchema)]
 struct ImportAssetParams {
@@ -1520,7 +1703,9 @@ struct Generate3dParams {
     provider: String,
 }
 
-fn default_provider() -> String { "local_procedural".to_string() }
+fn default_provider() -> String {
+    "local_procedural".to_string()
+}
 
 #[derive(Deserialize, JsonSchema)]
 struct StartViewportStreamParams {
@@ -1535,9 +1720,15 @@ struct StartViewportStreamParams {
     capacity: usize,
 }
 
-fn default_shm_path() -> String { "/tmp/blender_mcp_shm_viewport".to_string() }
-fn default_stream_fps() -> u32 { 30 }
-fn default_shm_capacity() -> usize { 16 * 1024 * 1024 }
+fn default_shm_path() -> String {
+    "/tmp/blender_mcp_shm_viewport".to_string()
+}
+fn default_stream_fps() -> u32 {
+    30
+}
+fn default_shm_capacity() -> usize {
+    16 * 1024 * 1024
+}
 
 #[derive(Deserialize, JsonSchema)]
 struct StopViewportStreamParams {}
@@ -1567,7 +1758,9 @@ struct ApplySceneCsgParams {
     solver: String,
 }
 
-fn default_solver() -> String { "FAST".to_string() }
+fn default_solver() -> String {
+    "FAST".to_string()
+}
 
 #[derive(Deserialize, JsonSchema)]
 struct GenerateLodsParams {
@@ -1581,8 +1774,12 @@ struct GenerateLodsParams {
     collision_type: String,
 }
 
-fn default_lod_ratios() -> Vec<f32> { vec![1.0, 0.5, 0.25, 0.1] }
-fn default_collision_type() -> String { "convex_hull".to_string() }
+fn default_lod_ratios() -> Vec<f32> {
+    vec![1.0, 0.5, 0.25, 0.1]
+}
+fn default_collision_type() -> String {
+    "convex_hull".to_string()
+}
 
 #[derive(Deserialize, JsonSchema)]
 struct GenerateArmatureRigParams {
@@ -1596,7 +1793,9 @@ struct GenerateArmatureRigParams {
     bind_mesh: bool,
 }
 
-fn default_rig_template() -> String { "prop_container".to_string() }
+fn default_rig_template() -> String {
+    "prop_container".to_string()
+}
 
 #[derive(Deserialize, JsonSchema)]
 struct SearchMentionsParams {
@@ -1608,7 +1807,9 @@ struct SearchMentionsParams {
     limit: usize,
 }
 
-fn default_mentions_limit() -> usize { 30 }
+fn default_mentions_limit() -> usize {
+    30
+}
 
 #[derive(Deserialize, JsonSchema)]
 struct ViewportPickParams {
@@ -1621,7 +1822,10 @@ struct ViewportPickParams {
     seq: u64,
 }
 
-pub fn create_default_registry(ipc: Arc<BlenderIpcClient>, trajectory: Arc<TrajectoryRecorder>) -> ToolRegistry {
+pub fn create_default_registry(
+    ipc: Arc<BlenderIpcClient>,
+    trajectory: Arc<TrajectoryRecorder>,
+) -> ToolRegistry {
     let mut registry = ToolRegistry::new();
 
     // 1. audit_asset tool & audit_game_asset_tool alias
@@ -2379,7 +2583,9 @@ pub fn create_default_registry(ipc: Arc<BlenderIpcClient>, trajectory: Arc<Traje
                     "type": "stop_viewport_stream",
                     "params": {}
                 });
-                ipc.send_command(&cmd).await.map_err(|e| format!("Failed to stop viewport stream: {}", e))
+                ipc.send_command(&cmd)
+                    .await
+                    .map_err(|e| format!("Failed to stop viewport stream: {}", e))
             }
         },
     );
@@ -2391,7 +2597,10 @@ pub fn create_default_registry(ipc: Arc<BlenderIpcClient>, trajectory: Arc<Traje
         |params: ReadViewportFrameParams| async move {
             let shm = SharedMemoryViewport::create_or_open(&params.shm_path, 16 * 1024 * 1024)
                 .map_err(|e| format!("Failed to open shared memory viewport: {}", e))?;
-            match shm.read_latest_frame().map_err(|e| format!("Read frame error: {}", e))? {
+            match shm
+                .read_latest_frame()
+                .map_err(|e| format!("Read frame error: {}", e))?
+            {
                 Some(frame) => {
                     let b64 = if params.include_base64 {
                         Some(BASE64_STANDARD.encode(&frame.pixels))
@@ -2412,7 +2621,7 @@ pub fn create_default_registry(ipc: Arc<BlenderIpcClient>, trajectory: Arc<Traje
                 None => Ok(serde_json::json!({
                     "status": "waiting_for_frame",
                     "message": "Shared memory buffer is open, waiting for first frame write"
-                }))
+                })),
             }
         },
     );
@@ -2553,7 +2762,11 @@ impl BlenderMcpServer {
         let trajectory = Arc::new(TrajectoryRecorder::new());
         let registry = create_default_registry(Arc::clone(&ipc), Arc::clone(&trajectory));
         Self {
-            context: ServerContext { registry, ipc, trajectory },
+            context: ServerContext {
+                registry,
+                ipc,
+                trajectory,
+            },
         }
     }
 
@@ -2567,7 +2780,9 @@ impl BlenderMcpServer {
                 let res = InitializeResult {
                     protocol_version: LATEST_MCP_VERSION.to_string(),
                     capabilities: ServerCapabilities {
-                        tools: Some(ToolsCapability { list_changed: Some(false) }),
+                        tools: Some(ToolsCapability {
+                            list_changed: Some(false),
+                        }),
                         resources: Some(ResourcesCapability {
                             subscribe: Some(false),
                             list_changed: Some(false),
@@ -2597,7 +2812,12 @@ impl BlenderMcpServer {
                 ];
 
                 // Dynamically discover live scene datablocks if connected
-                if let Ok(resp) = self.context.ipc.send_command(&serde_json::json!({ "type": "list_scene_items" })).await {
+                if let Ok(resp) = self
+                    .context
+                    .ipc
+                    .send_command(&serde_json::json!({ "type": "list_scene_items" }))
+                    .await
+                {
                     if let Some(items) = resp.get("items").and_then(|v| v.as_array()) {
                         for item in items {
                             if let (Some(uri), Some(name), Some(desc)) = (
@@ -2632,9 +2852,14 @@ impl BlenderMcpServer {
                     }];
                     JsonRpcResponse::success(req.id, serde_json::json!({ "contents": contents }))
                 } else if uri == "blender://scene_summary" {
-                    let scene_info = self.context.ipc.send_command(&serde_json::json!({
-                        "type": "get_scene_info"
-                    })).await.unwrap_or_else(|_| serde_json::json!({ "status": "disconnected" }));
+                    let scene_info = self
+                        .context
+                        .ipc
+                        .send_command(&serde_json::json!({
+                            "type": "get_scene_info"
+                        }))
+                        .await
+                        .unwrap_or_else(|_| serde_json::json!({ "status": "disconnected" }));
                     let text = serde_json::to_string_pretty(&scene_info).unwrap_or_default();
                     let contents = vec![ResourceContent {
                         uri: uri.to_string(),
@@ -2644,10 +2869,17 @@ impl BlenderMcpServer {
                     }];
                     JsonRpcResponse::success(req.id, serde_json::json!({ "contents": contents }))
                 } else if let Some(object_name) = uri.strip_prefix("blender://objects/") {
-                    let res = self.context.ipc.send_command(&serde_json::json!({
-                        "type": "get_object_resource",
-                        "params": { "name": object_name }
-                    })).await.unwrap_or_else(|e| serde_json::json!({ "status": "error", "message": e.to_string() }));
+                    let res = self
+                        .context
+                        .ipc
+                        .send_command(&serde_json::json!({
+                            "type": "get_object_resource",
+                            "params": { "name": object_name }
+                        }))
+                        .await
+                        .unwrap_or_else(
+                            |e| serde_json::json!({ "status": "error", "message": e.to_string() }),
+                        );
                     let text = serde_json::to_string_pretty(&res).unwrap_or_default();
                     let contents = vec![ResourceContent {
                         uri: uri.to_string(),
@@ -2657,10 +2889,17 @@ impl BlenderMcpServer {
                     }];
                     JsonRpcResponse::success(req.id, serde_json::json!({ "contents": contents }))
                 } else if let Some(mat_name) = uri.strip_prefix("blender://materials/") {
-                    let res = self.context.ipc.send_command(&serde_json::json!({
-                        "type": "get_material_resource",
-                        "params": { "name": mat_name }
-                    })).await.unwrap_or_else(|e| serde_json::json!({ "status": "error", "message": e.to_string() }));
+                    let res = self
+                        .context
+                        .ipc
+                        .send_command(&serde_json::json!({
+                            "type": "get_material_resource",
+                            "params": { "name": mat_name }
+                        }))
+                        .await
+                        .unwrap_or_else(
+                            |e| serde_json::json!({ "status": "error", "message": e.to_string() }),
+                        );
                     let text = serde_json::to_string_pretty(&res).unwrap_or_default();
                     let contents = vec![ResourceContent {
                         uri: uri.to_string(),
@@ -2670,10 +2909,17 @@ impl BlenderMcpServer {
                     }];
                     JsonRpcResponse::success(req.id, serde_json::json!({ "contents": contents }))
                 } else if let Some(col_name) = uri.strip_prefix("blender://collections/") {
-                    let res = self.context.ipc.send_command(&serde_json::json!({
-                        "type": "get_collection_resource",
-                        "params": { "name": col_name }
-                    })).await.unwrap_or_else(|e| serde_json::json!({ "status": "error", "message": e.to_string() }));
+                    let res = self
+                        .context
+                        .ipc
+                        .send_command(&serde_json::json!({
+                            "type": "get_collection_resource",
+                            "params": { "name": col_name }
+                        }))
+                        .await
+                        .unwrap_or_else(
+                            |e| serde_json::json!({ "status": "error", "message": e.to_string() }),
+                        );
                     let text = serde_json::to_string_pretty(&res).unwrap_or_default();
                     let contents = vec![ResourceContent {
                         uri: uri.to_string(),
@@ -2683,7 +2929,11 @@ impl BlenderMcpServer {
                     }];
                     JsonRpcResponse::success(req.id, serde_json::json!({ "contents": contents }))
                 } else {
-                    JsonRpcResponse::error(req.id, -32602, format!("Resource URI '{}' not found", uri))
+                    JsonRpcResponse::error(
+                        req.id,
+                        -32602,
+                        format!("Resource URI '{}' not found", uri),
+                    )
                 }
             }
             "tools/list" => {
@@ -2694,19 +2944,28 @@ impl BlenderMcpServer {
             "tools/call" => {
                 let params = req.params.unwrap_or(serde_json::Value::Null);
                 let tool_name = params.get("name").and_then(|v| v.as_str()).unwrap_or("");
-                let arguments = params.get("arguments").cloned().unwrap_or(serde_json::json!({}));
+                let arguments = params
+                    .get("arguments")
+                    .cloned()
+                    .unwrap_or(serde_json::json!({}));
 
                 match self.context.registry.dispatch(tool_name, arguments).await {
                     Ok(val) => {
                         let text = serde_json::to_string_pretty(&val).unwrap_or_default();
-                        JsonRpcResponse::success(req.id, serde_json::to_value(CallToolResult::success(text)).unwrap())
+                        JsonRpcResponse::success(
+                            req.id,
+                            serde_json::to_value(CallToolResult::success(text)).unwrap(),
+                        )
                     }
-                    Err(err) => {
-                        JsonRpcResponse::success(req.id, serde_json::to_value(CallToolResult::error(err.to_string())).unwrap())
-                    }
+                    Err(err) => JsonRpcResponse::success(
+                        req.id,
+                        serde_json::to_value(CallToolResult::error(err.to_string())).unwrap(),
+                    ),
                 }
             }
-            _ => JsonRpcResponse::error(req.id, -32601, format!("Method '{}' not found", req.method)),
+            _ => {
+                JsonRpcResponse::error(req.id, -32601, format!("Method '{}' not found", req.method))
+            }
         }
     }
 
@@ -2811,7 +3070,11 @@ mod tests {
         ];
 
         for tool in canonical_expected {
-            assert!(tool_names.contains(&tool), "Missing canonical tool: {}", tool);
+            assert!(
+                tool_names.contains(&tool),
+                "Missing canonical tool: {}",
+                tool
+            );
         }
 
         // Check new native Rust tools
@@ -2874,7 +3137,10 @@ mod tests {
         let obj_val = res_obj_resp.result.unwrap();
         let obj_contents = obj_val.get("contents").unwrap().as_array().unwrap();
         assert_eq!(obj_contents.len(), 1);
-        assert_eq!(obj_contents[0].get("uri").unwrap(), "blender://objects/Cube");
+        assert_eq!(
+            obj_contents[0].get("uri").unwrap(),
+            "blender://objects/Cube"
+        );
     }
 }
 
@@ -2927,7 +3193,10 @@ pub async fn search_polyhaven(
 
     let resp = client.get(&url).send().await?;
     if !resp.status().is_success() {
-        return Err(anyhow::anyhow!("Polyhaven API error: HTTP {}", resp.status()));
+        return Err(anyhow::anyhow!(
+            "Polyhaven API error: HTTP {}",
+            resp.status()
+        ));
     }
 
     let raw_map: HashMap<String, RawPolyhavenEntry> = resp.json().await?;
@@ -2945,7 +3214,11 @@ pub async fn search_polyhaven(
 
         // Filter by category if requested
         if let Some(ref cat) = cat_lower {
-            if !entry.categories.iter().any(|c| c.to_lowercase().contains(cat)) {
+            if !entry
+                .categories
+                .iter()
+                .any(|c| c.to_lowercase().contains(cat))
+            {
                 continue;
             }
         }
@@ -2954,8 +3227,14 @@ pub async fn search_polyhaven(
         if !q_lower.is_empty() {
             let matches_name = entry.name.to_lowercase().contains(&q_lower);
             let matches_id = id.to_lowercase().contains(&q_lower);
-            let matches_tags = entry.tags.iter().any(|t| t.to_lowercase().contains(&q_lower));
-            let matches_cats = entry.categories.iter().any(|c| c.to_lowercase().contains(&q_lower));
+            let matches_tags = entry
+                .tags
+                .iter()
+                .any(|t| t.to_lowercase().contains(&q_lower));
+            let matches_cats = entry
+                .categories
+                .iter()
+                .any(|c| c.to_lowercase().contains(&q_lower));
 
             if !matches_name && !matches_id && !matches_tags && !matches_cats {
                 continue;
@@ -2989,7 +3268,11 @@ pub async fn get_polyhaven_download_url(
 
     let resp = client.get(&url).send().await?;
     if !resp.status().is_success() {
-        return Err(anyhow::anyhow!("Polyhaven files lookup failed for {}: HTTP {}", id, resp.status()));
+        return Err(anyhow::anyhow!(
+            "Polyhaven files lookup failed for {}: HTTP {}",
+            id,
+            resp.status()
+        ));
     }
 
     let files_val: serde_json::Value = resp.json().await?;
@@ -3027,14 +3310,22 @@ pub async fn get_polyhaven_download_url(
         return Ok(hdri_url.to_string());
     }
 
-    Err(anyhow::anyhow!("No download URL found for asset '{}' at resolution '{}'", id, resolution))
+    Err(anyhow::anyhow!(
+        "No download URL found for asset '{}' at resolution '{}'",
+        id,
+        resolution
+    ))
 }
 
 pub async fn download_asset_file(url: &str, dest_path: &Path) -> Result<PathBuf, anyhow::Error> {
     let client = reqwest::Client::new();
     let resp = client.get(url).send().await?;
     if !resp.status().is_success() {
-        return Err(anyhow::anyhow!("Download failed from {}: HTTP {}", url, resp.status()));
+        return Err(anyhow::anyhow!(
+            "Download failed from {}: HTTP {}",
+            url,
+            resp.status()
+        ));
     }
 
     let bytes = resp.bytes().await?;
@@ -3206,10 +3497,7 @@ impl TrajectoryRecorder {
     }
 
     pub fn entries(&self) -> Vec<TrajectoryFeedbackEntry> {
-        self.entries
-            .lock()
-            .map(|l| l.clone())
-            .unwrap_or_default()
+        self.entries.lock().map(|l| l.clone()).unwrap_or_default()
     }
 }
 
@@ -3612,9 +3900,9 @@ pub struct SpatialCsgGraph {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CsgProvenance {
-    pub kind: String, // "extractor"
+    pub kind: String,      // "extractor"
     pub extractor: String, // "blender-mcp-rs"
-    pub domain: String, // "spatial-3d"
+    pub domain: String,    // "spatial-3d"
     pub source: String,
 }
 
@@ -3699,7 +3987,12 @@ impl SpatialCsgGraph {
         self.nodes.push(node);
     }
 
-    pub fn add_edge(&mut self, from: impl Into<String>, to: impl Into<String>, rel: CsgRelationship) {
+    pub fn add_edge(
+        &mut self,
+        from: impl Into<String>,
+        to: impl Into<String>,
+        rel: CsgRelationship,
+    ) {
         self.edges.push(CsgEdge {
             from: from.into(),
             to: to.into(),
@@ -3770,9 +4063,21 @@ mod tests {
         graph.add_node(socket_node);
         graph.add_node(collider_node);
 
-        graph.add_edge("obj:Hero_Barrel", "mesh:Hero_Barrel_Mesh", CsgRelationship::Contains);
-        graph.add_edge("obj:Hero_Barrel", "socket:SOCKET_grip_primary", CsgRelationship::Anchors);
-        graph.add_edge("obj:Hero_Barrel", "collider:UCX_Hero_Barrel_01", CsgRelationship::CollidesWith);
+        graph.add_edge(
+            "obj:Hero_Barrel",
+            "mesh:Hero_Barrel_Mesh",
+            CsgRelationship::Contains,
+        );
+        graph.add_edge(
+            "obj:Hero_Barrel",
+            "socket:SOCKET_grip_primary",
+            CsgRelationship::Anchors,
+        );
+        graph.add_edge(
+            "obj:Hero_Barrel",
+            "collider:UCX_Hero_Barrel_01",
+            CsgRelationship::CollidesWith,
+        );
 
         assert_eq!(graph.schema_version, "rr-csg-0.1+3d");
         assert_eq!(graph.nodes.len(), 4);
@@ -3789,10 +4094,10 @@ mod tests {
 
 ## CRATE FILE: crates/blender-mcp-geom/src/lib.rs
 
-use std::path::Path;
 use parry3d::math::Point;
 use parry3d::transformation::convex_hull;
 use serde::{Deserialize, Serialize};
+use std::path::Path;
 use thiserror::Error;
 
 pub mod csg;
@@ -3987,7 +4292,9 @@ impl ModelAuditor {
         })
     }
 
-    pub fn inspect_semantic_asset(path: impl AsRef<Path>) -> Result<SemanticAssetReport, GeomError> {
+    pub fn inspect_semantic_asset(
+        path: impl AsRef<Path>,
+    ) -> Result<SemanticAssetReport, GeomError> {
         let path_ref = path.as_ref();
         let (document, buffers, _images) = gltf::import(path_ref)?;
 
@@ -4003,8 +4310,12 @@ impl ModelAuditor {
                     for pos in iter {
                         total_vertices += 1;
                         for i in 0..3 {
-                            if pos[i] < min_bound[i] { min_bound[i] = pos[i]; }
-                            if pos[i] > max_bound[i] { max_bound[i] = pos[i]; }
+                            if pos[i] < min_bound[i] {
+                                min_bound[i] = pos[i];
+                            }
+                            if pos[i] > max_bound[i] {
+                                max_bound[i] = pos[i];
+                            }
                         }
                     }
                 }
@@ -4029,7 +4340,10 @@ impl ModelAuditor {
             }
             if name.starts_with("SOCKET_") {
                 sockets.push(name.to_string());
-            } else if name.starts_with("UCX_") || name.starts_with("UBX_") || name.starts_with("UCP_") {
+            } else if name.starts_with("UCX_")
+                || name.starts_with("UBX_")
+                || name.starts_with("UCP_")
+            {
                 colliders.push(name.to_string());
             } else if node.mesh().is_some() {
                 meshes.push(name.to_string());
@@ -4077,8 +4391,16 @@ impl ModelAuditor {
             materials,
             sockets,
             colliders,
-            bounding_box_min: if total_vertices > 0 { min_bound } else { [0.0; 3] },
-            bounding_box_max: if total_vertices > 0 { max_bound } else { [0.0; 3] },
+            bounding_box_min: if total_vertices > 0 {
+                min_bound
+            } else {
+                [0.0; 3]
+            },
+            bounding_box_max: if total_vertices > 0 {
+                max_bound
+            } else {
+                [0.0; 3]
+            },
             dimensions,
             manifest,
         })
@@ -4113,7 +4435,9 @@ pub fn generate_collision_hull(
     collider_type: ColliderType,
 ) -> Result<CollisionHullResult, GeomError> {
     if points.is_empty() {
-        return Err(GeomError::Computation("Point cloud cannot be empty".to_string()));
+        return Err(GeomError::Computation(
+            "Point cloud cannot be empty".to_string(),
+        ));
     }
 
     let prefix = collider_type.prefix().to_string();
@@ -4162,7 +4486,10 @@ pub fn generate_collision_hull(
                 prefix,
                 node_name,
                 convex_mesh: None,
-                box_collider: Some(BoxCollider { center, half_extents }),
+                box_collider: Some(BoxCollider {
+                    center,
+                    half_extents,
+                }),
                 capsule_collider: None,
             })
         }
@@ -4196,7 +4523,11 @@ pub fn generate_collision_hull(
                 node_name,
                 convex_mesh: None,
                 box_collider: None,
-                capsule_collider: Some(CapsuleCollider { center, radius, half_height }),
+                capsule_collider: Some(CapsuleCollider {
+                    center,
+                    radius,
+                    half_height,
+                }),
             })
         }
     }
@@ -4226,10 +4557,7 @@ mod tests {
 
     #[test]
     fn test_generate_collision_hull_box() {
-        let points = vec![
-            [-1.0, -1.0, -2.0],
-            [1.0, 1.0, 2.0],
-        ];
+        let points = vec![[-1.0, -1.0, -2.0], [1.0, 1.0, 2.0]];
 
         let res = generate_collision_hull("Crate", &points, ColliderType::Box).unwrap();
         assert_eq!(res.prefix, "UBX_");
@@ -4241,10 +4569,7 @@ mod tests {
 
     #[test]
     fn test_generate_collision_hull_capsule() {
-        let points = vec![
-            [-1.0, -1.0, -3.0],
-            [1.0, 1.0, 3.0],
-        ];
+        let points = vec![[-1.0, -1.0, -3.0], [1.0, 1.0, 3.0]];
 
         let res = generate_collision_hull("Lantern", &points, ColliderType::Capsule).unwrap();
         assert_eq!(res.prefix, "UCP_");
@@ -4283,10 +4608,10 @@ futures.workspace = true
 
 ## CRATE FILE: crates/blender-mcp-ipc/src/lib.rs
 
+use memmap2::MmapMut;
 use std::fs::OpenOptions;
 use std::path::{Path, PathBuf};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
-use memmap2::MmapMut;
 use thiserror::Error;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::TcpStream;
@@ -4305,7 +4630,9 @@ pub enum IpcError {
     #[error("Protocol error: {0}")]
     Protocol(String),
 
-    #[error("Shared memory buffer overflow: capacity {capacity} bytes, requested {requested} bytes")]
+    #[error(
+        "Shared memory buffer overflow: capacity {capacity} bytes, requested {requested} bytes"
+    )]
     BufferOverflow { capacity: usize, requested: usize },
 
     #[error("Invalid frame header magic (expected 0x4652414D, got 0x{0:08X})")]
@@ -4333,7 +4660,10 @@ impl BlenderIpcClient {
         self
     }
 
-    pub async fn send_command(&self, command: &serde_json::Value) -> Result<serde_json::Value, IpcError> {
+    pub async fn send_command(
+        &self,
+        command: &serde_json::Value,
+    ) -> Result<serde_json::Value, IpcError> {
         let addr = format!("{}:{}", self.host, self.port);
         let mut stream = tokio::time::timeout(self.timeout, TcpStream::connect(&addr))
             .await
@@ -4364,7 +4694,9 @@ impl BlenderIpcClient {
         }
 
         if buffer.is_empty() {
-            return Err(IpcError::Protocol("Empty response from Blender".to_string()));
+            return Err(IpcError::Protocol(
+                "Empty response from Blender".to_string(),
+            ));
         }
 
         let resp: serde_json::Value = serde_json::from_slice(&buffer)?;
@@ -4575,9 +4907,9 @@ tracing.workspace = true
 
 ## CRATE FILE: crates/blender-mcp-pbr/src/lib.rs
 
-use std::path::Path;
 use image::{GrayImage, ImageBuffer, Rgba, RgbaImage};
 use serde::{Deserialize, Serialize};
+use std::path::Path;
 use thiserror::Error;
 
 #[derive(Error, Debug)]
@@ -4674,21 +5006,19 @@ mod tests {
         let temp_dir = std::env::temp_dir();
         let out_file = temp_dir.join("test_orm_output.png");
 
-        let res = pack_orm(
-            None::<&Path>,
-            None::<&Path>,
-            None::<&Path>,
-            &out_file,
-        ).expect("Packing failed");
+        let res = pack_orm(None::<&Path>, None::<&Path>, None::<&Path>, &out_file)
+            .expect("Packing failed");
 
         assert_eq!(res.width, 1024);
         assert_eq!(res.height, 1024);
 
-        let img = image::open(&out_file).expect("Failed to load output image").to_rgba8();
+        let img = image::open(&out_file)
+            .expect("Failed to load output image")
+            .to_rgba8();
         let px = img.get_pixel(0, 0);
         assert_eq!(px[0], 255); // Default AO
         assert_eq!(px[1], 128); // Default Roughness
-        assert_eq!(px[2], 0);   // Default Metallic
+        assert_eq!(px[2], 0); // Default Metallic
         assert_eq!(px[3], 255); // Alpha
 
         let _ = std::fs::remove_file(out_file);
@@ -5129,7 +5459,11 @@ mod tests {
         registry.register_fn(
             "add_numbers",
             "Adds two integers together",
-            |params: AddParams| async move { Ok(AddResult { sum: params.a + params.b }) },
+            |params: AddParams| async move {
+                Ok(AddResult {
+                    sum: params.a + params.b,
+                })
+            },
         );
 
         let tools = registry.list_tools();
@@ -5392,10 +5726,10 @@ mod tests {
 
 ## CRATE FILE: crates/blender-mcp-synth/src/flora.rs
 
-use std::f32::consts::PI;
+use crate::mesh::ProceduralMesh;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
-use crate::mesh::ProceduralMesh;
+use std::f32::consts::PI;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "snake_case")]
@@ -5417,9 +5751,15 @@ pub struct FloraSynthParams {
     pub seed: u64,
 }
 
-fn default_height() -> f32 { 3.5 }
-fn default_arm_count() -> u32 { 2 }
-fn default_seed() -> u64 { 42 }
+fn default_height() -> f32 {
+    3.5
+}
+fn default_arm_count() -> u32 {
+    2
+}
+fn default_seed() -> u64 {
+    42
+}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SynthesizedFlora {
@@ -5535,7 +5875,8 @@ fn synthesize_yucca(_params: &FloraSynthParams) -> SynthesizedFlora {
         let base_idx = mesh.vertices.len() as u32;
         mesh.vertices.push([0.0, 0.1, 0.0]);
         mesh.vertices.push([tip_x, tip_y, tip_z]);
-        mesh.vertices.push([angle.cos() * 0.05, 0.0, angle.sin() * 0.05]);
+        mesh.vertices
+            .push([angle.cos() * 0.05, 0.0, angle.sin() * 0.05]);
 
         mesh.normals.push([0.0, 1.0, 0.0]);
         mesh.normals.push([angle.cos(), 0.5, angle.sin()]);
@@ -5577,11 +5918,16 @@ fn synthesize_desert_rock(_params: &FloraSynthParams) -> SynthesizedFlora {
     }
 
     let indices = vec![
-        [0, 1, 5], [0, 5, 4],
-        [1, 2, 6], [1, 6, 5],
-        [2, 3, 7], [2, 7, 6],
-        [3, 0, 4], [3, 4, 7],
-        [4, 5, 6], [4, 6, 7],
+        [0, 1, 5],
+        [0, 5, 4],
+        [1, 2, 6],
+        [1, 6, 5],
+        [2, 3, 7],
+        [2, 7, 6],
+        [3, 0, 4],
+        [3, 4, 7],
+        [4, 5, 6],
+        [4, 6, 7],
     ];
     mesh.indices = indices;
 
@@ -5746,13 +6092,11 @@ mod tests {
                     scale: [0.5, 0.5, 0.5],
                 },
             ],
-            sockets: vec![
-                AssemblySocket {
-                    name: "SOCKET_hitch_ring".to_string(),
-                    position: [0.0, 1.0, 0.0],
-                    rotation: [0.0, 0.0, 0.0],
-                },
-            ],
+            sockets: vec![AssemblySocket {
+                name: "SOCKET_hitch_ring".to_string(),
+                position: [0.0, 1.0, 0.0],
+                rotation: [0.0, 0.0, 0.0],
+            }],
             collider_type: "convex".to_string(),
         };
 
@@ -5770,17 +6114,17 @@ mod tests {
 
 ## CRATE FILE: crates/blender-mcp-synth/src/lib.rs
 
-pub mod mesh;
-pub mod flora;
-pub mod props;
-pub mod grammar;
 pub mod biological;
+pub mod flora;
+pub mod grammar;
+pub mod mesh;
+pub mod props;
 
-pub use mesh::*;
-pub use flora::*;
-pub use props::*;
-pub use grammar::*;
 pub use biological::*;
+pub use flora::*;
+pub use grammar::*;
+pub use mesh::*;
+pub use props::*;
 
 ================================================================================
 
@@ -5854,10 +6198,10 @@ impl ProceduralMesh {
 
 ## CRATE FILE: crates/blender-mcp-synth/src/props.rs
 
-use std::f32::consts::PI;
+use crate::mesh::ProceduralMesh;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
-use crate::mesh::ProceduralMesh;
+use std::f32::consts::PI;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "snake_case")]
@@ -5877,8 +6221,12 @@ pub struct PropSynthParams {
     pub distress: f32,
 }
 
-fn default_scale() -> f32 { 1.0 }
-fn default_distress() -> f32 { 0.1 }
+fn default_scale() -> f32 {
+    1.0
+}
+fn default_distress() -> f32 {
+    0.1
+}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SynthesizedProp {
@@ -5919,7 +6267,8 @@ fn synthesize_barrel(params: &PropSynthParams) -> SynthesizedProp {
             let z = angle.sin() * current_radius;
 
             mesh.vertices.push([x, y, z]);
-            mesh.normals.push([angle.cos(), 0.1 * (v - 0.5), angle.sin()]);
+            mesh.normals
+                .push([angle.cos(), 0.1 * (v - 0.5), angle.sin()]);
             mesh.uvs.push([u, v]);
         }
     }
@@ -5955,8 +6304,14 @@ fn synthesize_crate(params: &PropSynthParams) -> SynthesizedProp {
     let h = size * 0.5;
 
     let corners = [
-        [-h, -h, -h], [h, -h, -h], [h, h, -h], [-h, h, -h],
-        [-h, -h,  h], [h, -h,  h], [h, h,  h], [-h, h,  h],
+        [-h, -h, -h],
+        [h, -h, -h],
+        [h, h, -h],
+        [-h, h, -h],
+        [-h, -h, h],
+        [h, -h, h],
+        [h, h, h],
+        [-h, h, h],
     ];
 
     for c in &corners {
@@ -5967,27 +6322,30 @@ fn synthesize_crate(params: &PropSynthParams) -> SynthesizedProp {
 
     let indices = [
         // Front
-        [0, 1, 2], [0, 2, 3],
+        [0, 1, 2],
+        [0, 2, 3],
         // Back
-        [5, 4, 7], [5, 7, 6],
+        [5, 4, 7],
+        [5, 7, 6],
         // Top
-        [3, 2, 6], [3, 6, 7],
+        [3, 2, 6],
+        [3, 6, 7],
         // Bottom
-        [4, 5, 1], [4, 1, 0],
+        [4, 5, 1],
+        [4, 1, 0],
         // Right
-        [1, 5, 6], [1, 6, 2],
+        [1, 5, 6],
+        [1, 6, 2],
         // Left
-        [4, 0, 3], [4, 3, 7],
+        [4, 0, 3],
+        [4, 3, 7],
     ];
     mesh.indices.extend_from_slice(&indices);
 
     SynthesizedProp {
         prop_type: MunicipalPropType::WoodenCrate,
         mesh,
-        sockets: vec![
-            "SOCKET_mount_top".to_string(),
-            "SOCKET_ground".to_string(),
-        ],
+        sockets: vec!["SOCKET_mount_top".to_string(), "SOCKET_ground".to_string()],
         collider_type: blender_mcp_geom::ColliderType::Box,
     }
 }
@@ -6023,10 +6381,7 @@ fn synthesize_hitching_post(params: &PropSynthParams) -> SynthesizedProp {
     SynthesizedProp {
         prop_type: MunicipalPropType::HitchingPost,
         mesh,
-        sockets: vec![
-            "SOCKET_hitch_ring".to_string(),
-            "SOCKET_ground".to_string(),
-        ],
+        sockets: vec!["SOCKET_hitch_ring".to_string(), "SOCKET_ground".to_string()],
         collider_type: blender_mcp_geom::ColliderType::Capsule,
     }
 }
@@ -6041,8 +6396,13 @@ fn synthesize_lantern(params: &PropSynthParams) -> SynthesizedProp {
         for s in 0..segments {
             let u = s as f32 / segments as f32;
             let angle = u * 2.0 * PI;
-            let current_r = if y_step > h * 0.3 && y_step < h * 0.7 { r * 1.2 } else { r };
-            mesh.vertices.push([angle.cos() * current_r, y_step, angle.sin() * current_r]);
+            let current_r = if y_step > h * 0.3 && y_step < h * 0.7 {
+                r * 1.2
+            } else {
+                r
+            };
+            mesh.vertices
+                .push([angle.cos() * current_r, y_step, angle.sin() * current_r]);
             mesh.normals.push([angle.cos(), 0.0, angle.sin()]);
             mesh.uvs.push([u, y_step / h]);
         }

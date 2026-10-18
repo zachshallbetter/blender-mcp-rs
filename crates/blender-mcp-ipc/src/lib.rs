@@ -1,7 +1,7 @@
+use memmap2::MmapMut;
 use std::fs::OpenOptions;
 use std::path::{Path, PathBuf};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
-use memmap2::MmapMut;
 use thiserror::Error;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::TcpStream;
@@ -20,7 +20,9 @@ pub enum IpcError {
     #[error("Protocol error: {0}")]
     Protocol(String),
 
-    #[error("Shared memory buffer overflow: capacity {capacity} bytes, requested {requested} bytes")]
+    #[error(
+        "Shared memory buffer overflow: capacity {capacity} bytes, requested {requested} bytes"
+    )]
     BufferOverflow { capacity: usize, requested: usize },
 
     #[error("Invalid frame header magic (expected 0x4652414D, got 0x{0:08X})")]
@@ -48,7 +50,10 @@ impl BlenderIpcClient {
         self
     }
 
-    pub async fn send_command(&self, command: &serde_json::Value) -> Result<serde_json::Value, IpcError> {
+    pub async fn send_command(
+        &self,
+        command: &serde_json::Value,
+    ) -> Result<serde_json::Value, IpcError> {
         let addr = format!("{}:{}", self.host, self.port);
         let mut stream = tokio::time::timeout(self.timeout, TcpStream::connect(&addr))
             .await
@@ -79,7 +84,9 @@ impl BlenderIpcClient {
         }
 
         if buffer.is_empty() {
-            return Err(IpcError::Protocol("Empty response from Blender".to_string()));
+            return Err(IpcError::Protocol(
+                "Empty response from Blender".to_string(),
+            ));
         }
 
         let resp: serde_json::Value = serde_json::from_slice(&buffer)?;

@@ -1,6 +1,6 @@
-use std::path::Path;
 use image::{GrayImage, ImageBuffer, Rgba, RgbaImage};
 use serde::{Deserialize, Serialize};
+use std::path::Path;
 use thiserror::Error;
 
 #[derive(Error, Debug)]
@@ -97,21 +97,19 @@ mod tests {
         let temp_dir = std::env::temp_dir();
         let out_file = temp_dir.join("test_orm_output.png");
 
-        let res = pack_orm(
-            None::<&Path>,
-            None::<&Path>,
-            None::<&Path>,
-            &out_file,
-        ).expect("Packing failed");
+        let res = pack_orm(None::<&Path>, None::<&Path>, None::<&Path>, &out_file)
+            .expect("Packing failed");
 
         assert_eq!(res.width, 1024);
         assert_eq!(res.height, 1024);
 
-        let img = image::open(&out_file).expect("Failed to load output image").to_rgba8();
+        let img = image::open(&out_file)
+            .expect("Failed to load output image")
+            .to_rgba8();
         let px = img.get_pixel(0, 0);
         assert_eq!(px[0], 255); // Default AO
         assert_eq!(px[1], 128); // Default Roughness
-        assert_eq!(px[2], 0);   // Default Metallic
+        assert_eq!(px[2], 0); // Default Metallic
         assert_eq!(px[3], 255); // Alpha
 
         let _ = std::fs::remove_file(out_file);

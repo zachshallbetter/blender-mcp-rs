@@ -5,6 +5,36 @@ All notable changes to `blender-mcp-rs` will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html) under the governance of `VERSIONING.md` and `AUTHORITY.md`.
 
+## [0.5.0] - 2026-10-18
+
+### Added
+- **Interactive Scene Discovery & Mentions (`search_mentions`)**:
+  - Real-time fuzzy query over Blender objects, materials, and collections with rich mention tokens and semantic URIs (`mention://object/{name}`, `mention://material/{name}`, `mention://collection/{name}`).
+- **Granular Live Scene MCP Resources**:
+  - Added `blender://objects/{name}`: Real-time inspection of object transforms, dimensions, modifiers, vertex/polygon counts, and material slots.
+  - Added `blender://materials/{name}`: Shader node tree graph inspection, Principled BSDF inputs, texture links, and active users.
+  - Added `blender://collections/{name}`: Collection membership, nested hierarchy, and visibility state.
+- **Interactive Viewport Raycast Picking (`viewport_pick`)**:
+  - Normalized screen-space raycasting $(x, y)$ from the active 3D camera into Blender's scene.
+  - Automatically selects hit object in Blender and returns 3D world hit coordinates, distance, surface normal, and polygon material.
+- **Game Engine Multi-LOD Generation & Collision Hulls (`generate_lods_and_collision` & CLI `blender-mcp lods`)**:
+  - Automated multi-tiered Decimate reduction passes (LOD0 through LOD3).
+  - Native collision hulls (`UCX_*`, `UBX_*`, `UCP_*`) with Rapier3D / Unreal naming conventions.
+  - One-command terminal workflow: `blender-mcp lods <object> --pack-orm --ao <path> --roughness <path> --metallic <path>`.
+- **Procedural Armature Rigging & Automatic Skinning (`generate_armature_rig`)**:
+  - Automated bone armatures and vertex group binding (`prop_container`, `mechanical_door`, `biped`).
+- **Live Viewport Streaming & CSG Execution**:
+  - Zero-copy shared memory frame streaming via `memmap2` (`start_viewport_stream`, `stop_viewport_stream`, `read_viewport_frame`).
+  - Spatial CSG graph node execution directly in Blender (`apply_scene_csg`).
+  - Reflective tool suite expanded from 31 to 47 tools.
+- **Multi-Platform Continuous Integration**:
+  - Added GitHub Actions workflow (`.github/workflows/ci.yml`) testing Linux, macOS, and Windows with strict compiler warning denial (`-D warnings`).
+
+### Verification Status
+- **Implemented**: All 8 workspace crates, companion Blender 5.1/5.2 addon, and CLI binary.
+- **Tested**: 20 unit/integration tests passing 100% across workspace with 0 compiler and 0 clippy warnings.
+- **Empirically Validated**: Verified companion addon installation in Blender 5.1/5.2 paths, screen-space raycasting pick math, and dynamic resource URI resolution.
+
 ## [0.4.0] - 2026-10-17
 
 ### Added

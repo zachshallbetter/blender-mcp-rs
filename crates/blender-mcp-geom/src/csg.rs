@@ -12,9 +12,9 @@ pub struct SpatialCsgGraph {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CsgProvenance {
-    pub kind: String, // "extractor"
+    pub kind: String,      // "extractor"
     pub extractor: String, // "blender-mcp-rs"
-    pub domain: String, // "spatial-3d"
+    pub domain: String,    // "spatial-3d"
     pub source: String,
 }
 
@@ -99,7 +99,12 @@ impl SpatialCsgGraph {
         self.nodes.push(node);
     }
 
-    pub fn add_edge(&mut self, from: impl Into<String>, to: impl Into<String>, rel: CsgRelationship) {
+    pub fn add_edge(
+        &mut self,
+        from: impl Into<String>,
+        to: impl Into<String>,
+        rel: CsgRelationship,
+    ) {
         self.edges.push(CsgEdge {
             from: from.into(),
             to: to.into(),
@@ -170,9 +175,21 @@ mod tests {
         graph.add_node(socket_node);
         graph.add_node(collider_node);
 
-        graph.add_edge("obj:Hero_Barrel", "mesh:Hero_Barrel_Mesh", CsgRelationship::Contains);
-        graph.add_edge("obj:Hero_Barrel", "socket:SOCKET_grip_primary", CsgRelationship::Anchors);
-        graph.add_edge("obj:Hero_Barrel", "collider:UCX_Hero_Barrel_01", CsgRelationship::CollidesWith);
+        graph.add_edge(
+            "obj:Hero_Barrel",
+            "mesh:Hero_Barrel_Mesh",
+            CsgRelationship::Contains,
+        );
+        graph.add_edge(
+            "obj:Hero_Barrel",
+            "socket:SOCKET_grip_primary",
+            CsgRelationship::Anchors,
+        );
+        graph.add_edge(
+            "obj:Hero_Barrel",
+            "collider:UCX_Hero_Barrel_01",
+            CsgRelationship::CollidesWith,
+        );
 
         assert_eq!(graph.schema_version, "rr-csg-0.1+3d");
         assert_eq!(graph.nodes.len(), 4);

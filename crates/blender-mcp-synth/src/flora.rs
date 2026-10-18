@@ -1,7 +1,7 @@
-use std::f32::consts::PI;
+use crate::mesh::ProceduralMesh;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
-use crate::mesh::ProceduralMesh;
+use std::f32::consts::PI;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "snake_case")]
@@ -23,9 +23,15 @@ pub struct FloraSynthParams {
     pub seed: u64,
 }
 
-fn default_height() -> f32 { 3.5 }
-fn default_arm_count() -> u32 { 2 }
-fn default_seed() -> u64 { 42 }
+fn default_height() -> f32 {
+    3.5
+}
+fn default_arm_count() -> u32 {
+    2
+}
+fn default_seed() -> u64 {
+    42
+}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SynthesizedFlora {
@@ -141,7 +147,8 @@ fn synthesize_yucca(_params: &FloraSynthParams) -> SynthesizedFlora {
         let base_idx = mesh.vertices.len() as u32;
         mesh.vertices.push([0.0, 0.1, 0.0]);
         mesh.vertices.push([tip_x, tip_y, tip_z]);
-        mesh.vertices.push([angle.cos() * 0.05, 0.0, angle.sin() * 0.05]);
+        mesh.vertices
+            .push([angle.cos() * 0.05, 0.0, angle.sin() * 0.05]);
 
         mesh.normals.push([0.0, 1.0, 0.0]);
         mesh.normals.push([angle.cos(), 0.5, angle.sin()]);
@@ -183,11 +190,16 @@ fn synthesize_desert_rock(_params: &FloraSynthParams) -> SynthesizedFlora {
     }
 
     let indices = vec![
-        [0, 1, 5], [0, 5, 4],
-        [1, 2, 6], [1, 6, 5],
-        [2, 3, 7], [2, 7, 6],
-        [3, 0, 4], [3, 4, 7],
-        [4, 5, 6], [4, 6, 7],
+        [0, 1, 5],
+        [0, 5, 4],
+        [1, 2, 6],
+        [1, 6, 5],
+        [2, 3, 7],
+        [2, 7, 6],
+        [3, 0, 4],
+        [3, 4, 7],
+        [4, 5, 6],
+        [4, 6, 7],
     ];
     mesh.indices = indices;
 

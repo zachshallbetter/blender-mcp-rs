@@ -126,13 +126,11 @@ mod tests {
                     scale: [0.5, 0.5, 0.5],
                 },
             ],
-            sockets: vec![
-                AssemblySocket {
-                    name: "SOCKET_hitch_ring".to_string(),
-                    position: [0.0, 1.0, 0.0],
-                    rotation: [0.0, 0.0, 0.0],
-                },
-            ],
+            sockets: vec![AssemblySocket {
+                name: "SOCKET_hitch_ring".to_string(),
+                position: [0.0, 1.0, 0.0],
+                rotation: [0.0, 0.0, 0.0],
+            }],
             collider_type: "convex".to_string(),
         };
 

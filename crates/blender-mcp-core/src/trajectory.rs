@@ -71,10 +71,7 @@ impl TrajectoryRecorder {
     }
 
     pub fn entries(&self) -> Vec<TrajectoryFeedbackEntry> {
-        self.entries
-            .lock()
-            .map(|l| l.clone())
-            .unwrap_or_default()
+        self.entries.lock().map(|l| l.clone()).unwrap_or_default()
     }
 }
 

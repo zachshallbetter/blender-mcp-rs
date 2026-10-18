@@ -43,7 +43,10 @@ pub async fn search_polyhaven(
 
     let resp = client.get(&url).send().await?;
     if !resp.status().is_success() {
-        return Err(anyhow::anyhow!("Polyhaven API error: HTTP {}", resp.status()));
+        return Err(anyhow::anyhow!(
+            "Polyhaven API error: HTTP {}",
+            resp.status()
+        ));
     }
 
     let raw_map: HashMap<String, RawPolyhavenEntry> = resp.json().await?;
@@ -61,7 +64,11 @@ pub async fn search_polyhaven(
 
         // Filter by category if requested
         if let Some(ref cat) = cat_lower {
-            if !entry.categories.iter().any(|c| c.to_lowercase().contains(cat)) {
+            if !entry
+                .categories
+                .iter()
+                .any(|c| c.to_lowercase().contains(cat))
+            {
                 continue;
             }
         }
@@ -70,8 +77,14 @@ pub async fn search_polyhaven(
         if !q_lower.is_empty() {
             let matches_name = entry.name.to_lowercase().contains(&q_lower);
             let matches_id = id.to_lowercase().contains(&q_lower);
-            let matches_tags = entry.tags.iter().any(|t| t.to_lowercase().contains(&q_lower));
-            let matches_cats = entry.categories.iter().any(|c| c.to_lowercase().contains(&q_lower));
+            let matches_tags = entry
+                .tags
+                .iter()
+                .any(|t| t.to_lowercase().contains(&q_lower));
+            let matches_cats = entry
+                .categories
+                .iter()
+                .any(|c| c.to_lowercase().contains(&q_lower));
 
             if !matches_name && !matches_id && !matches_tags && !matches_cats {
                 continue;
@@ -105,7 +118,11 @@ pub async fn get_polyhaven_download_url(
 
     let resp = client.get(&url).send().await?;
     if !resp.status().is_success() {
-        return Err(anyhow::anyhow!("Polyhaven files lookup failed for {}: HTTP {}", id, resp.status()));
+        return Err(anyhow::anyhow!(
+            "Polyhaven files lookup failed for {}: HTTP {}",
+            id,
+            resp.status()
+        ));
     }
 
     let files_val: serde_json::Value = resp.json().await?;
@@ -143,14 +160,22 @@ pub async fn get_polyhaven_download_url(
         return Ok(hdri_url.to_string());
     }
 
-    Err(anyhow::anyhow!("No download URL found for asset '{}' at resolution '{}'", id, resolution))
+    Err(anyhow::anyhow!(
+        "No download URL found for asset '{}' at resolution '{}'",
+        id,
+        resolution
+    ))
 }
 
 pub async fn download_asset_file(url: &str, dest_path: &Path) -> Result<PathBuf, anyhow::Error> {
     let client = reqwest::Client::new();
     let resp = client.get(url).send().await?;
     if !resp.status().is_success() {
-        return Err(anyhow::anyhow!("Download failed from {}: HTTP {}", url, resp.status()));
+        return Err(anyhow::anyhow!(
+            "Download failed from {}: HTTP {}",
+            url,
+            resp.status()
+        ));
     }
 
     let bytes = resp.bytes().await?;

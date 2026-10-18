@@ -78,15 +78,15 @@ Upstream Python implementations (`blendermcp.org`) suffer from severe architectu
 - **`blender-mcp-geom`**: Native 3D geometry engine powered by Rapier3D / Parry for convex collision hulls (`UCX_`, `UBX_`, `UCP_`) and Spatial CSG (`rr-csg-0.1+3d`).
 - **`blender-mcp-pbr`**: SIMD texture channel packing for Ambient Occlusion, Roughness, and Metallic (ORM) maps.
 - **`blender-mcp-synth`**: Procedural asset synthesis engine (desert flora, municipal props, and assembly grammars).
-- **`blender-mcp-core`**: The central daemon coordinating sessions, safe mode sandbox, and the 37-tool reflective registry.
+- **`blender-mcp-core`**: The central daemon coordinating sessions, safe mode sandbox, and the 47-tool reflective registry.
 - **`blender-mcp-cli`**: The unified binary (`blender-mcp`) providing agent auto-configuration, direct pipeline execution, and addon lifecycle management.
 
 ---
 
 ## Documentation
 
-- [**Tool Reference Catalog (`docs/tools.md`)**](docs/tools.md): Complete specification of all 37 reflective tools.
-- [**MCP Resource Provider (`docs/resources.md`)**](docs/resources.md): Interactive WebGL/HTML5 live viewport (`blender://viewport`) and scene CSG graph (`blender://scene_summary`).
+- [**Tool Reference Catalog (`docs/tools.md`)**](docs/tools.md): Complete specification of all 47 reflective tools.
+- [**MCP Resource Provider (`docs/resources.md`)**](docs/resources.md): Interactive WebGL/HTML5 live viewport (`blender://viewport`), scene CSG graph (`blender://scene_summary`), and granular datablock inspectors (`blender://objects/*`, `blender://materials/*`, `blender://collections/*`).
 - [**Architecture & Doctrine (`docs/architecture.md`)**](docs/architecture.md): Dual-transport IPC, zero-copy shared memory streaming, and spatial CSG (`rr-csg-0.1+3d`).
 - [**Blender Companion Addon (`docs/addon.md`)**](docs/addon.md): Installation, headless configuration, and socket daemon setup.
 - [**Game Engine Asset Pipeline (`docs/game-pipeline.md`)**](docs/game-pipeline.md): Multi-LOD decimation, Rapier3D `UCX_*` collision hulls, and SIMD ORM packing.

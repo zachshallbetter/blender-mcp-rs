@@ -190,7 +190,11 @@ mod tests {
         registry.register_fn(
             "add_numbers",
             "Adds two integers together",
-            |params: AddParams| async move { Ok(AddResult { sum: params.a + params.b }) },
+            |params: AddParams| async move {
+                Ok(AddResult {
+                    sum: params.a + params.b,
+                })
+            },
         );
 
         let tools = registry.list_tools();

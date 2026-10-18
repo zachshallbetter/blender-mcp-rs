@@ -1,7 +1,7 @@
-use std::f32::consts::PI;
+use crate::mesh::ProceduralMesh;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
-use crate::mesh::ProceduralMesh;
+use std::f32::consts::PI;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "snake_case")]
@@ -21,8 +21,12 @@ pub struct PropSynthParams {
     pub distress: f32,
 }
 
-fn default_scale() -> f32 { 1.0 }
-fn default_distress() -> f32 { 0.1 }
+fn default_scale() -> f32 {
+    1.0
+}
+fn default_distress() -> f32 {
+    0.1
+}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SynthesizedProp {
@@ -63,7 +67,8 @@ fn synthesize_barrel(params: &PropSynthParams) -> SynthesizedProp {
             let z = angle.sin() * current_radius;
 
             mesh.vertices.push([x, y, z]);
-            mesh.normals.push([angle.cos(), 0.1 * (v - 0.5), angle.sin()]);
+            mesh.normals
+                .push([angle.cos(), 0.1 * (v - 0.5), angle.sin()]);
             mesh.uvs.push([u, v]);
         }
     }
@@ -99,8 +104,14 @@ fn synthesize_crate(params: &PropSynthParams) -> SynthesizedProp {
     let h = size * 0.5;
 
     let corners = [
-        [-h, -h, -h], [h, -h, -h], [h, h, -h], [-h, h, -h],
-        [-h, -h,  h], [h, -h,  h], [h, h,  h], [-h, h,  h],
+        [-h, -h, -h],
+        [h, -h, -h],
+        [h, h, -h],
+        [-h, h, -h],
+        [-h, -h, h],
+        [h, -h, h],
+        [h, h, h],
+        [-h, h, h],
     ];
 
     for c in &corners {
@@ -111,27 +122,30 @@ fn synthesize_crate(params: &PropSynthParams) -> SynthesizedProp {
 
     let indices = [
         // Front
-        [0, 1, 2], [0, 2, 3],
+        [0, 1, 2],
+        [0, 2, 3],
         // Back
-        [5, 4, 7], [5, 7, 6],
+        [5, 4, 7],
+        [5, 7, 6],
         // Top
-        [3, 2, 6], [3, 6, 7],
+        [3, 2, 6],
+        [3, 6, 7],
         // Bottom
-        [4, 5, 1], [4, 1, 0],
+        [4, 5, 1],
+        [4, 1, 0],
         // Right
-        [1, 5, 6], [1, 6, 2],
+        [1, 5, 6],
+        [1, 6, 2],
         // Left
-        [4, 0, 3], [4, 3, 7],
+        [4, 0, 3],
+        [4, 3, 7],
     ];
     mesh.indices.extend_from_slice(&indices);
 
     SynthesizedProp {
         prop_type: MunicipalPropType::WoodenCrate,
         mesh,
-        sockets: vec![
-            "SOCKET_mount_top".to_string(),
-            "SOCKET_ground".to_string(),
-        ],
+        sockets: vec!["SOCKET_mount_top".to_string(), "SOCKET_ground".to_string()],
         collider_type: blender_mcp_geom::ColliderType::Box,
     }
 }
@@ -167,10 +181,7 @@ fn synthesize_hitching_post(params: &PropSynthParams) -> SynthesizedProp {
     SynthesizedProp {
         prop_type: MunicipalPropType::HitchingPost,
         mesh,
-        sockets: vec![
-            "SOCKET_hitch_ring".to_string(),
-            "SOCKET_ground".to_string(),
-        ],
+        sockets: vec!["SOCKET_hitch_ring".to_string(), "SOCKET_ground".to_string()],
         collider_type: blender_mcp_geom::ColliderType::Capsule,
     }
 }
@@ -185,8 +196,13 @@ fn synthesize_lantern(params: &PropSynthParams) -> SynthesizedProp {
         for s in 0..segments {
             let u = s as f32 / segments as f32;
             let angle = u * 2.0 * PI;
-            let current_r = if y_step > h * 0.3 && y_step < h * 0.7 { r * 1.2 } else { r };
-            mesh.vertices.push([angle.cos() * current_r, y_step, angle.sin() * current_r]);
+            let current_r = if y_step > h * 0.3 && y_step < h * 0.7 {
+                r * 1.2
+            } else {
+                r
+            };
+            mesh.vertices
+                .push([angle.cos() * current_r, y_step, angle.sin() * current_r]);
             mesh.normals.push([angle.cos(), 0.0, angle.sin()]);
             mesh.uvs.push([u, y_step / h]);
         }

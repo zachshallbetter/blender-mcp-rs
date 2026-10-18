@@ -1,6 +1,6 @@
+pub mod polyhaven;
 pub mod sandbox;
 pub mod trajectory;
-pub mod polyhaven;
 pub mod viewport_template;
 
 use std::collections::HashMap;
@@ -39,10 +39,18 @@ struct LookParams {
     elevation: f32,
 }
 
-fn default_focus_target() -> String { "active".to_string() }
-fn default_camera_distance() -> f32 { 3.0 }
-fn default_azimuth() -> f32 { 45.0 }
-fn default_elevation() -> f32 { 30.0 }
+fn default_focus_target() -> String {
+    "active".to_string()
+}
+fn default_camera_distance() -> f32 {
+    3.0
+}
+fn default_azimuth() -> f32 {
+    45.0
+}
+fn default_elevation() -> f32 {
+    30.0
+}
 
 #[derive(Deserialize, JsonSchema)]
 struct ViewportSnapshotParams {
@@ -54,7 +62,9 @@ struct ViewportSnapshotParams {
     height: u32,
 }
 
-fn default_res() -> u32 { 1080 }
+fn default_res() -> u32 {
+    1080
+}
 
 #[derive(Deserialize, JsonSchema)]
 struct AuditAssetParams {
@@ -150,8 +160,12 @@ struct ScreenshotAreaParams {
     save_to: Option<String>,
 }
 
-fn default_area_type() -> String { "VIEW_3D".to_string() }
-fn default_max_size() -> u32 { 1024 }
+fn default_area_type() -> String {
+    "VIEW_3D".to_string()
+}
+fn default_max_size() -> u32 {
+    1024
+}
 
 #[derive(Deserialize, JsonSchema)]
 struct CheckMissingFilesParams {}
@@ -174,7 +188,9 @@ struct FocusObjectDataParams {
     allow_edits: bool,
 }
 
-fn default_true() -> bool { true }
+fn default_true() -> bool {
+    true
+}
 
 #[derive(Deserialize, JsonSchema)]
 struct JumpTabParams {
@@ -197,8 +213,12 @@ struct RenderThumbnailParams {
     samples: u32,
 }
 
-fn default_thumb_dim() -> u32 { 320 }
-fn default_samples() -> u32 { 16 }
+fn default_thumb_dim() -> u32 {
+    320
+}
+fn default_samples() -> u32 {
+    16
+}
 
 #[derive(Deserialize, JsonSchema)]
 struct RenderViewportToPathParams {
@@ -253,7 +273,9 @@ struct SearchAssetsParams {
     limit: usize,
 }
 
-fn default_limit() -> usize { 20 }
+fn default_limit() -> usize {
+    20
+}
 
 #[derive(Deserialize, JsonSchema)]
 struct ImportAssetParams {
@@ -286,7 +308,9 @@ struct Generate3dParams {
     provider: String,
 }
 
-fn default_provider() -> String { "local_procedural".to_string() }
+fn default_provider() -> String {
+    "local_procedural".to_string()
+}
 
 #[derive(Deserialize, JsonSchema)]
 struct StartViewportStreamParams {
@@ -301,9 +325,15 @@ struct StartViewportStreamParams {
     capacity: usize,
 }
 
-fn default_shm_path() -> String { "/tmp/blender_mcp_shm_viewport".to_string() }
-fn default_stream_fps() -> u32 { 30 }
-fn default_shm_capacity() -> usize { 16 * 1024 * 1024 }
+fn default_shm_path() -> String {
+    "/tmp/blender_mcp_shm_viewport".to_string()
+}
+fn default_stream_fps() -> u32 {
+    30
+}
+fn default_shm_capacity() -> usize {
+    16 * 1024 * 1024
+}
 
 #[derive(Deserialize, JsonSchema)]
 struct StopViewportStreamParams {}
@@ -333,7 +363,9 @@ struct ApplySceneCsgParams {
     solver: String,
 }
 
-fn default_solver() -> String { "FAST".to_string() }
+fn default_solver() -> String {
+    "FAST".to_string()
+}
 
 #[derive(Deserialize, JsonSchema)]
 struct GenerateLodsParams {
@@ -347,8 +379,12 @@ struct GenerateLodsParams {
     collision_type: String,
 }
 
-fn default_lod_ratios() -> Vec<f32> { vec![1.0, 0.5, 0.25, 0.1] }
-fn default_collision_type() -> String { "convex_hull".to_string() }
+fn default_lod_ratios() -> Vec<f32> {
+    vec![1.0, 0.5, 0.25, 0.1]
+}
+fn default_collision_type() -> String {
+    "convex_hull".to_string()
+}
 
 #[derive(Deserialize, JsonSchema)]
 struct GenerateArmatureRigParams {
@@ -362,7 +398,9 @@ struct GenerateArmatureRigParams {
     bind_mesh: bool,
 }
 
-fn default_rig_template() -> String { "prop_container".to_string() }
+fn default_rig_template() -> String {
+    "prop_container".to_string()
+}
 
 #[derive(Deserialize, JsonSchema)]
 struct SearchMentionsParams {
@@ -374,7 +412,9 @@ struct SearchMentionsParams {
     limit: usize,
 }
 
-fn default_mentions_limit() -> usize { 30 }
+fn default_mentions_limit() -> usize {
+    30
+}
 
 #[derive(Deserialize, JsonSchema)]
 struct ViewportPickParams {
@@ -387,7 +427,10 @@ struct ViewportPickParams {
     seq: u64,
 }
 
-pub fn create_default_registry(ipc: Arc<BlenderIpcClient>, trajectory: Arc<TrajectoryRecorder>) -> ToolRegistry {
+pub fn create_default_registry(
+    ipc: Arc<BlenderIpcClient>,
+    trajectory: Arc<TrajectoryRecorder>,
+) -> ToolRegistry {
     let mut registry = ToolRegistry::new();
 
     // 1. audit_asset tool & audit_game_asset_tool alias
@@ -1145,7 +1188,9 @@ pub fn create_default_registry(ipc: Arc<BlenderIpcClient>, trajectory: Arc<Traje
                     "type": "stop_viewport_stream",
                     "params": {}
                 });
-                ipc.send_command(&cmd).await.map_err(|e| format!("Failed to stop viewport stream: {}", e))
+                ipc.send_command(&cmd)
+                    .await
+                    .map_err(|e| format!("Failed to stop viewport stream: {}", e))
             }
         },
     );
@@ -1157,7 +1202,10 @@ pub fn create_default_registry(ipc: Arc<BlenderIpcClient>, trajectory: Arc<Traje
         |params: ReadViewportFrameParams| async move {
             let shm = SharedMemoryViewport::create_or_open(&params.shm_path, 16 * 1024 * 1024)
                 .map_err(|e| format!("Failed to open shared memory viewport: {}", e))?;
-            match shm.read_latest_frame().map_err(|e| format!("Read frame error: {}", e))? {
+            match shm
+                .read_latest_frame()
+                .map_err(|e| format!("Read frame error: {}", e))?
+            {
                 Some(frame) => {
                     let b64 = if params.include_base64 {
                         Some(BASE64_STANDARD.encode(&frame.pixels))
@@ -1178,7 +1226,7 @@ pub fn create_default_registry(ipc: Arc<BlenderIpcClient>, trajectory: Arc<Traje
                 None => Ok(serde_json::json!({
                     "status": "waiting_for_frame",
                     "message": "Shared memory buffer is open, waiting for first frame write"
-                }))
+                })),
             }
         },
     );
@@ -1319,7 +1367,11 @@ impl BlenderMcpServer {
         let trajectory = Arc::new(TrajectoryRecorder::new());
         let registry = create_default_registry(Arc::clone(&ipc), Arc::clone(&trajectory));
         Self {
-            context: ServerContext { registry, ipc, trajectory },
+            context: ServerContext {
+                registry,
+                ipc,
+                trajectory,
+            },
         }
     }
 
@@ -1333,7 +1385,9 @@ impl BlenderMcpServer {
                 let res = InitializeResult {
                     protocol_version: LATEST_MCP_VERSION.to_string(),
                     capabilities: ServerCapabilities {
-                        tools: Some(ToolsCapability { list_changed: Some(false) }),
+                        tools: Some(ToolsCapability {
+                            list_changed: Some(false),
+                        }),
                         resources: Some(ResourcesCapability {
                             subscribe: Some(false),
                             list_changed: Some(false),
@@ -1363,7 +1417,12 @@ impl BlenderMcpServer {
                 ];
 
                 // Dynamically discover live scene datablocks if connected
-                if let Ok(resp) = self.context.ipc.send_command(&serde_json::json!({ "type": "list_scene_items" })).await {
+                if let Ok(resp) = self
+                    .context
+                    .ipc
+                    .send_command(&serde_json::json!({ "type": "list_scene_items" }))
+                    .await
+                {
                     if let Some(items) = resp.get("items").and_then(|v| v.as_array()) {
                         for item in items {
                             if let (Some(uri), Some(name), Some(desc)) = (
@@ -1398,9 +1457,14 @@ impl BlenderMcpServer {
                     }];
                     JsonRpcResponse::success(req.id, serde_json::json!({ "contents": contents }))
                 } else if uri == "blender://scene_summary" {
-                    let scene_info = self.context.ipc.send_command(&serde_json::json!({
-                        "type": "get_scene_info"
-                    })).await.unwrap_or_else(|_| serde_json::json!({ "status": "disconnected" }));
+                    let scene_info = self
+                        .context
+                        .ipc
+                        .send_command(&serde_json::json!({
+                            "type": "get_scene_info"
+                        }))
+                        .await
+                        .unwrap_or_else(|_| serde_json::json!({ "status": "disconnected" }));
                     let text = serde_json::to_string_pretty(&scene_info).unwrap_or_default();
                     let contents = vec![ResourceContent {
                         uri: uri.to_string(),
@@ -1410,10 +1474,17 @@ impl BlenderMcpServer {
                     }];
                     JsonRpcResponse::success(req.id, serde_json::json!({ "contents": contents }))
                 } else if let Some(object_name) = uri.strip_prefix("blender://objects/") {
-                    let res = self.context.ipc.send_command(&serde_json::json!({
-                        "type": "get_object_resource",
-                        "params": { "name": object_name }
-                    })).await.unwrap_or_else(|e| serde_json::json!({ "status": "error", "message": e.to_string() }));
+                    let res = self
+                        .context
+                        .ipc
+                        .send_command(&serde_json::json!({
+                            "type": "get_object_resource",
+                            "params": { "name": object_name }
+                        }))
+                        .await
+                        .unwrap_or_else(
+                            |e| serde_json::json!({ "status": "error", "message": e.to_string() }),
+                        );
                     let text = serde_json::to_string_pretty(&res).unwrap_or_default();
                     let contents = vec![ResourceContent {
                         uri: uri.to_string(),
@@ -1423,10 +1494,17 @@ impl BlenderMcpServer {
                     }];
                     JsonRpcResponse::success(req.id, serde_json::json!({ "contents": contents }))
                 } else if let Some(mat_name) = uri.strip_prefix("blender://materials/") {
-                    let res = self.context.ipc.send_command(&serde_json::json!({
-                        "type": "get_material_resource",
-                        "params": { "name": mat_name }
-                    })).await.unwrap_or_else(|e| serde_json::json!({ "status": "error", "message": e.to_string() }));
+                    let res = self
+                        .context
+                        .ipc
+                        .send_command(&serde_json::json!({
+                            "type": "get_material_resource",
+                            "params": { "name": mat_name }
+                        }))
+                        .await
+                        .unwrap_or_else(
+                            |e| serde_json::json!({ "status": "error", "message": e.to_string() }),
+                        );
                     let text = serde_json::to_string_pretty(&res).unwrap_or_default();
                     let contents = vec![ResourceContent {
                         uri: uri.to_string(),
@@ -1436,10 +1514,17 @@ impl BlenderMcpServer {
                     }];
                     JsonRpcResponse::success(req.id, serde_json::json!({ "contents": contents }))
                 } else if let Some(col_name) = uri.strip_prefix("blender://collections/") {
-                    let res = self.context.ipc.send_command(&serde_json::json!({
-                        "type": "get_collection_resource",
-                        "params": { "name": col_name }
-                    })).await.unwrap_or_else(|e| serde_json::json!({ "status": "error", "message": e.to_string() }));
+                    let res = self
+                        .context
+                        .ipc
+                        .send_command(&serde_json::json!({
+                            "type": "get_collection_resource",
+                            "params": { "name": col_name }
+                        }))
+                        .await
+                        .unwrap_or_else(
+                            |e| serde_json::json!({ "status": "error", "message": e.to_string() }),
+                        );
                     let text = serde_json::to_string_pretty(&res).unwrap_or_default();
                     let contents = vec![ResourceContent {
                         uri: uri.to_string(),
@@ -1449,7 +1534,11 @@ impl BlenderMcpServer {
                     }];
                     JsonRpcResponse::success(req.id, serde_json::json!({ "contents": contents }))
                 } else {
-                    JsonRpcResponse::error(req.id, -32602, format!("Resource URI '{}' not found", uri))
+                    JsonRpcResponse::error(
+                        req.id,
+                        -32602,
+                        format!("Resource URI '{}' not found", uri),
+                    )
                 }
             }
             "tools/list" => {
@@ -1460,19 +1549,28 @@ impl BlenderMcpServer {
             "tools/call" => {
                 let params = req.params.unwrap_or(serde_json::Value::Null);
                 let tool_name = params.get("name").and_then(|v| v.as_str()).unwrap_or("");
-                let arguments = params.get("arguments").cloned().unwrap_or(serde_json::json!({}));
+                let arguments = params
+                    .get("arguments")
+                    .cloned()
+                    .unwrap_or(serde_json::json!({}));
 
                 match self.context.registry.dispatch(tool_name, arguments).await {
                     Ok(val) => {
                         let text = serde_json::to_string_pretty(&val).unwrap_or_default();
-                        JsonRpcResponse::success(req.id, serde_json::to_value(CallToolResult::success(text)).unwrap())
+                        JsonRpcResponse::success(
+                            req.id,
+                            serde_json::to_value(CallToolResult::success(text)).unwrap(),
+                        )
                     }
-                    Err(err) => {
-                        JsonRpcResponse::success(req.id, serde_json::to_value(CallToolResult::error(err.to_string())).unwrap())
-                    }
+                    Err(err) => JsonRpcResponse::success(
+                        req.id,
+                        serde_json::to_value(CallToolResult::error(err.to_string())).unwrap(),
+                    ),
                 }
             }
-            _ => JsonRpcResponse::error(req.id, -32601, format!("Method '{}' not found", req.method)),
+            _ => {
+                JsonRpcResponse::error(req.id, -32601, format!("Method '{}' not found", req.method))
+            }
         }
     }
 
@@ -1577,7 +1675,11 @@ mod tests {
         ];
 
         for tool in canonical_expected {
-            assert!(tool_names.contains(&tool), "Missing canonical tool: {}", tool);
+            assert!(
+                tool_names.contains(&tool),
+                "Missing canonical tool: {}",
+                tool
+            );
         }
 
         // Check new native Rust tools
@@ -1640,6 +1742,9 @@ mod tests {
         let obj_val = res_obj_resp.result.unwrap();
         let obj_contents = obj_val.get("contents").unwrap().as_array().unwrap();
         assert_eq!(obj_contents.len(), 1);
-        assert_eq!(obj_contents[0].get("uri").unwrap(), "blender://objects/Cube");
+        assert_eq!(
+            obj_contents[0].get("uri").unwrap(),
+            "blender://objects/Cube"
+        );
     }
 }

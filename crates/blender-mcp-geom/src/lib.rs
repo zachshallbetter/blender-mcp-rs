@@ -1,7 +1,7 @@
-use std::path::Path;
 use parry3d::math::Point;
 use parry3d::transformation::convex_hull;
 use serde::{Deserialize, Serialize};
+use std::path::Path;
 use thiserror::Error;
 
 pub mod csg;
@@ -196,7 +196,9 @@ impl ModelAuditor {
         })
     }
 
-    pub fn inspect_semantic_asset(path: impl AsRef<Path>) -> Result<SemanticAssetReport, GeomError> {
+    pub fn inspect_semantic_asset(
+        path: impl AsRef<Path>,
+    ) -> Result<SemanticAssetReport, GeomError> {
         let path_ref = path.as_ref();
         let (document, buffers, _images) = gltf::import(path_ref)?;
 
@@ -212,8 +214,12 @@ impl ModelAuditor {
                     for pos in iter {
                         total_vertices += 1;
                         for i in 0..3 {
-                            if pos[i] < min_bound[i] { min_bound[i] = pos[i]; }
-                            if pos[i] > max_bound[i] { max_bound[i] = pos[i]; }
+                            if pos[i] < min_bound[i] {
+                                min_bound[i] = pos[i];
+                            }
+                            if pos[i] > max_bound[i] {
+                                max_bound[i] = pos[i];
+                            }
                         }
                     }
                 }
@@ -238,7 +244,10 @@ impl ModelAuditor {
             }
             if name.starts_with("SOCKET_") {
                 sockets.push(name.to_string());
-            } else if name.starts_with("UCX_") || name.starts_with("UBX_") || name.starts_with("UCP_") {
+            } else if name.starts_with("UCX_")
+                || name.starts_with("UBX_")
+                || name.starts_with("UCP_")
+            {
                 colliders.push(name.to_string());
             } else if node.mesh().is_some() {
                 meshes.push(name.to_string());
@@ -286,8 +295,16 @@ impl ModelAuditor {
             materials,
             sockets,
             colliders,
-            bounding_box_min: if total_vertices > 0 { min_bound } else { [0.0; 3] },
-            bounding_box_max: if total_vertices > 0 { max_bound } else { [0.0; 3] },
+            bounding_box_min: if total_vertices > 0 {
+                min_bound
+            } else {
+                [0.0; 3]
+            },
+            bounding_box_max: if total_vertices > 0 {
+                max_bound
+            } else {
+                [0.0; 3]
+            },
             dimensions,
             manifest,
         })
@@ -322,7 +339,9 @@ pub fn generate_collision_hull(
     collider_type: ColliderType,
 ) -> Result<CollisionHullResult, GeomError> {
     if points.is_empty() {
-        return Err(GeomError::Computation("Point cloud cannot be empty".to_string()));
+        return Err(GeomError::Computation(
+            "Point cloud cannot be empty".to_string(),
+        ));
     }
 
     let prefix = collider_type.prefix().to_string();
@@ -371,7 +390,10 @@ pub fn generate_collision_hull(
                 prefix,
                 node_name,
                 convex_mesh: None,
-                box_collider: Some(BoxCollider { center, half_extents }),
+                box_collider: Some(BoxCollider {
+                    center,
+                    half_extents,
+                }),
                 capsule_collider: None,
             })
         }
@@ -405,7 +427,11 @@ pub fn generate_collision_hull(
                 node_name,
                 convex_mesh: None,
                 box_collider: None,
-                capsule_collider: Some(CapsuleCollider { center, radius, half_height }),
+                capsule_collider: Some(CapsuleCollider {
+                    center,
+                    radius,
+                    half_height,
+                }),
             })
         }
     }
@@ -435,10 +461,7 @@ mod tests {
 
     #[test]
     fn test_generate_collision_hull_box() {
-        let points = vec![
-            [-1.0, -1.0, -2.0],
-            [1.0, 1.0, 2.0],
-        ];
+        let points = vec![[-1.0, -1.0, -2.0], [1.0, 1.0, 2.0]];
 
         let res = generate_collision_hull("Crate", &points, ColliderType::Box).unwrap();
         assert_eq!(res.prefix, "UBX_");
@@ -450,10 +473,7 @@ mod tests {
 
     #[test]
     fn test_generate_collision_hull_capsule() {
-        let points = vec![
-            [-1.0, -1.0, -3.0],
-            [1.0, 1.0, 3.0],
-        ];
+        let points = vec![[-1.0, -1.0, -3.0], [1.0, 1.0, 3.0]];
 
         let res = generate_collision_hull("Lantern", &points, ColliderType::Capsule).unwrap();
         assert_eq!(res.prefix, "UCP_");
