@@ -4,6 +4,9 @@ use parry3d::transformation::convex_hull;
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
+pub mod csg;
+pub use csg::*;
+
 #[derive(Error, Debug)]
 pub enum GeomError {
     #[error("glTF parsing error: {0}")]

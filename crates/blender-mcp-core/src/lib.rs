@@ -69,6 +69,17 @@ fn default_output_dir() -> String {
 #[derive(Deserialize, JsonSchema)]
 struct GetSceneInfoParams {}
 
+#[derive(Deserialize, JsonSchema)]
+struct GetSceneCsgParams {
+    /// Source scene identifier or path (default: active_scene)
+    #[serde(default = "default_csg_source")]
+    source: String,
+}
+
+fn default_csg_source() -> String {
+    "active_scene".to_string()
+}
+
 pub fn create_default_registry(ipc: Arc<BlenderIpcClient>) -> ToolRegistry {
     let mut registry = ToolRegistry::new();
 
@@ -176,6 +187,67 @@ pub fn create_default_registry(ipc: Arc<BlenderIpcClient>) -> ToolRegistry {
                 ipc.send_command(&cmd)
                     .await
                     .map_err(|e| format!("Scene query failed: {}", e))
+            }
+        },
+    );
+
+    // 7. get_scene_csg tool (rr-csg-0.1+3d Compiler Semantic Graph)
+    let ipc_clone = Arc::clone(&ipc);
+    registry.register_fn(
+        "get_scene_csg",
+        "Generates a formal 3D Compiler Semantic Graph (rr-csg-0.1+3d) with typed nodes, edges, sockets, and colliders",
+        move |params: GetSceneCsgParams| {
+            let ipc = Arc::clone(&ipc_clone);
+            async move {
+                let cmd = serde_json::json!({
+                    "type": "get_scene_info",
+                    "params": {}
+                });
+                let info = ipc.send_command(&cmd)
+                    .await
+                    .map_err(|e| format!("Scene query failed: {}", e))?;
+
+                let mut graph = blender_mcp_geom::SpatialCsgGraph::new(&params.source);
+                if let Some(objects) = info.get("objects").and_then(|v| v.as_array()) {
+                    for obj in objects {
+                        let name = obj.get("name").and_then(|v| v.as_str()).unwrap_or("unknown");
+                        let obj_type = obj.get("type").and_then(|v| v.as_str()).unwrap_or("EMPTY");
+                        let kind = if name.starts_with("SOCKET_") {
+                            blender_mcp_geom::CsgNodeKind::Socket
+                        } else if name.starts_with("UCX_") || name.starts_with("UBX_") || name.starts_with("UCP_") {
+                            blender_mcp_geom::CsgNodeKind::Collider
+                        } else if obj_type == "MESH" {
+                            blender_mcp_geom::CsgNodeKind::Mesh
+                        } else if obj_type == "CAMERA" {
+                            blender_mcp_geom::CsgNodeKind::Camera
+                        } else if obj_type == "LIGHT" {
+                            blender_mcp_geom::CsgNodeKind::Light
+                        } else {
+                            blender_mcp_geom::CsgNodeKind::Object
+                        };
+
+                        let tri_count = obj.get("polygons").and_then(|v| v.as_u64()).map(|c| c as usize);
+                        let id = format!("{}:{}", match kind {
+                            blender_mcp_geom::CsgNodeKind::Socket => "socket",
+                            blender_mcp_geom::CsgNodeKind::Collider => "collider",
+                            blender_mcp_geom::CsgNodeKind::Mesh => "mesh",
+                            blender_mcp_geom::CsgNodeKind::Camera => "camera",
+                            blender_mcp_geom::CsgNodeKind::Light => "light",
+                            _ => "obj",
+                        }, name);
+
+                        graph.add_node(blender_mcp_geom::CsgNode {
+                            id,
+                            name: name.to_string(),
+                            kind,
+                            minimum_access: "public".to_string(),
+                            transform: None,
+                            triangle_count: tri_count,
+                            metadata: None,
+                        });
+                    }
+                }
+                serde_json::to_value(&graph).map_err(|e| e.to_string())
             }
         },
     );
@@ -301,7 +373,7 @@ mod tests {
         assert!(list_resp.error.is_none());
         let res_val = list_resp.result.unwrap();
         let tools = res_val.get("tools").unwrap().as_array().unwrap();
-        assert_eq!(tools.len(), 6);
+        assert_eq!(tools.len(), 7);
 
         let tool_names: Vec<&str> = tools
             .iter()
@@ -313,5 +385,6 @@ mod tests {
         assert!(tool_names.contains(&"rig_game_item"));
         assert!(tool_names.contains(&"craft_hero_prop"));
         assert!(tool_names.contains(&"get_scene_info"));
+        assert!(tool_names.contains(&"get_scene_csg"));
     }
 }

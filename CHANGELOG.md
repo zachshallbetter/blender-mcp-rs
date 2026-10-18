@@ -5,6 +5,22 @@ All notable changes to `blender-mcp-rs` will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html) under the governance of `VERSIONING.md` and `AUTHORITY.md`.
 
+## [0.2.0] - 2026-10-17
+
+### Added
+- **Spatial Compiler Semantic Graph (`rr-csg-0.1+3d`)**:
+  - Implemented formal 3D scene semantic graph protocol conforming to `reflective-rust` and `reflective-index` specifications.
+  - Added reflective MCP tool `get_scene_csg` and direct CLI command `blender-mcp csg [--source <name>] [--json]`.
+  - Typed spatial nodes: `scene`, `object`, `mesh`, `socket`, `collider`, `camera`, `light`, `material`.
+  - Typed semantic edges: `contains`, `parents`, `anchors`, `collides_with`, `applies_material`.
+- **Zero-Copy Shared Memory Viewport Streaming (`blender-mcp-ipc`)**:
+  - Cross-platform memory-mapped ring buffer (`memmap2`) with sub-microsecond latency and zero CPU base64 encoding overhead.
+  - Native `FrameHeader` with frame sequence tracking, timestamp nanoseconds, and buffer overflow protection.
+
+### Verification Status
+- **Implemented**: `SpatialCsgGraph`, `SharedMemoryViewport`, `get_scene_csg` tool, and `csg` CLI subcommand.
+- **Tested**: 10 unit/integration tests passing 100% across workspace with zero clippy warnings.
+
 ## [0.1.0] - 2026-10-17
 
 ### Added

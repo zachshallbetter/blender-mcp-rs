@@ -34,6 +34,9 @@ enum Commands {
 
     /// Export specialized agent skills and prompts for all major AI coding platforms
     ExportSkills(ExportSkillsArgs),
+
+    /// Extract a formal 3D Compiler Semantic Graph (rr-csg-0.1+3d) from Blender
+    Csg(CsgArgs),
 }
 
 #[derive(Args)]
@@ -129,6 +132,25 @@ struct ExportSkillsArgs {
     /// Target platform format: "all", "antigravity", "cursor", "claude", "gemini"
     #[arg(long, default_value = "all")]
     format: String,
+}
+
+#[derive(Args)]
+struct CsgArgs {
+    /// Source scene identifier (default: active_scene)
+    #[arg(long, default_value = "active_scene")]
+    source: String,
+
+    /// Blender IPC host address
+    #[arg(long, default_value = "127.0.0.1")]
+    host: String,
+
+    /// Blender IPC port
+    #[arg(long, default_value_t = 9876)]
+    port: u16,
+
+    /// Output report in machine-readable JSON
+    #[arg(long)]
+    json: bool,
 }
 
 #[derive(Args)]
@@ -237,6 +259,67 @@ async fn main() -> Result<(), anyhow::Error> {
         }
         Some(Commands::ExportSkills(args)) => {
             export_agent_skills(&args.dest_dir, &args.format)?;
+        }
+        Some(Commands::Csg(args)) => {
+            let ipc = blender_mcp_ipc::BlenderIpcClient::new(&args.host, args.port);
+            let cmd = serde_json::json!({
+                "type": "get_scene_info",
+                "params": {}
+            });
+            match ipc.send_command(&cmd).await {
+                Ok(info) => {
+                    let mut graph = blender_mcp_geom::SpatialCsgGraph::new(&args.source);
+                    if let Some(objects) = info.get("objects").and_then(|v| v.as_array()) {
+                        for obj in objects {
+                            let name = obj.get("name").and_then(|v| v.as_str()).unwrap_or("unknown");
+                            let obj_type = obj.get("type").and_then(|v| v.as_str()).unwrap_or("EMPTY");
+                            let kind = if name.starts_with("SOCKET_") {
+                                blender_mcp_geom::CsgNodeKind::Socket
+                            } else if name.starts_with("UCX_") || name.starts_with("UBX_") || name.starts_with("UCP_") {
+                                blender_mcp_geom::CsgNodeKind::Collider
+                            } else if obj_type == "MESH" {
+                                blender_mcp_geom::CsgNodeKind::Mesh
+                            } else if obj_type == "CAMERA" {
+                                blender_mcp_geom::CsgNodeKind::Camera
+                            } else if obj_type == "LIGHT" {
+                                blender_mcp_geom::CsgNodeKind::Light
+                            } else {
+                                blender_mcp_geom::CsgNodeKind::Object
+                            };
+
+                            let id = format!("{}:{}", match kind {
+                                blender_mcp_geom::CsgNodeKind::Socket => "socket",
+                                blender_mcp_geom::CsgNodeKind::Collider => "collider",
+                                blender_mcp_geom::CsgNodeKind::Mesh => "mesh",
+                                blender_mcp_geom::CsgNodeKind::Camera => "camera",
+                                blender_mcp_geom::CsgNodeKind::Light => "light",
+                                _ => "obj",
+                            }, name);
+
+                            graph.add_node(blender_mcp_geom::CsgNode {
+                                id,
+                                name: name.to_string(),
+                                kind,
+                                minimum_access: "public".to_string(),
+                                transform: None,
+                                triangle_count: obj.get("polygons").and_then(|v| v.as_u64()).map(|c| c as usize),
+                                metadata: None,
+                            });
+                        }
+                    }
+                    if args.json {
+                        println!("{}", serde_json::to_string_pretty(&graph)?);
+                    } else {
+                        println!("=== Spatial CSG Graph: {} ===", graph.provenance.source);
+                        println!("  Nodes: {}", graph.nodes.len());
+                        println!("  Edges: {}", graph.edges.len());
+                        for node in &graph.nodes {
+                            println!("  • [{:?}] {}", node.kind, node.name);
+                        }
+                    }
+                }
+                Err(e) => eprintln!("Failed to query Blender scene for CSG: {}", e),
+            }
         }
         Some(Commands::Client(args)) => {
             match args.action {

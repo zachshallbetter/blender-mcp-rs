@@ -1,5 +1,5 @@
 # blender-mcp-rs: Full Technical Context Corpus
-Version: v0.1.0
+Version: v0.2.0
 Authors: Zachary Shallbetter / SnackStudio
 License: MIT OR Apache-2.0
 
@@ -379,7 +379,7 @@ members = [
 resolver = "2"
 
 [workspace.package]
-version = "0.1.0"
+version = "0.2.0"
 edition = "2021"
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/SnackStudio/blender-mcp-rs"
@@ -486,6 +486,9 @@ enum Commands {
 
     /// Export specialized agent skills and prompts for all major AI coding platforms
     ExportSkills(ExportSkillsArgs),
+
+    /// Extract a formal 3D Compiler Semantic Graph (rr-csg-0.1+3d) from Blender
+    Csg(CsgArgs),
 }
 
 #[derive(Args)]
@@ -581,6 +584,25 @@ struct ExportSkillsArgs {
     /// Target platform format: "all", "antigravity", "cursor", "claude", "gemini"
     #[arg(long, default_value = "all")]
     format: String,
+}
+
+#[derive(Args)]
+struct CsgArgs {
+    /// Source scene identifier (default: active_scene)
+    #[arg(long, default_value = "active_scene")]
+    source: String,
+
+    /// Blender IPC host address
+    #[arg(long, default_value = "127.0.0.1")]
+    host: String,
+
+    /// Blender IPC port
+    #[arg(long, default_value_t = 9876)]
+    port: u16,
+
+    /// Output report in machine-readable JSON
+    #[arg(long)]
+    json: bool,
 }
 
 #[derive(Args)]
@@ -689,6 +711,67 @@ async fn main() -> Result<(), anyhow::Error> {
         }
         Some(Commands::ExportSkills(args)) => {
             export_agent_skills(&args.dest_dir, &args.format)?;
+        }
+        Some(Commands::Csg(args)) => {
+            let ipc = blender_mcp_ipc::BlenderIpcClient::new(&args.host, args.port);
+            let cmd = serde_json::json!({
+                "type": "get_scene_info",
+                "params": {}
+            });
+            match ipc.send_command(&cmd).await {
+                Ok(info) => {
+                    let mut graph = blender_mcp_geom::SpatialCsgGraph::new(&args.source);
+                    if let Some(objects) = info.get("objects").and_then(|v| v.as_array()) {
+                        for obj in objects {
+                            let name = obj.get("name").and_then(|v| v.as_str()).unwrap_or("unknown");
+                            let obj_type = obj.get("type").and_then(|v| v.as_str()).unwrap_or("EMPTY");
+                            let kind = if name.starts_with("SOCKET_") {
+                                blender_mcp_geom::CsgNodeKind::Socket
+                            } else if name.starts_with("UCX_") || name.starts_with("UBX_") || name.starts_with("UCP_") {
+                                blender_mcp_geom::CsgNodeKind::Collider
+                            } else if obj_type == "MESH" {
+                                blender_mcp_geom::CsgNodeKind::Mesh
+                            } else if obj_type == "CAMERA" {
+                                blender_mcp_geom::CsgNodeKind::Camera
+                            } else if obj_type == "LIGHT" {
+                                blender_mcp_geom::CsgNodeKind::Light
+                            } else {
+                                blender_mcp_geom::CsgNodeKind::Object
+                            };
+
+                            let id = format!("{}:{}", match kind {
+                                blender_mcp_geom::CsgNodeKind::Socket => "socket",
+                                blender_mcp_geom::CsgNodeKind::Collider => "collider",
+                                blender_mcp_geom::CsgNodeKind::Mesh => "mesh",
+                                blender_mcp_geom::CsgNodeKind::Camera => "camera",
+                                blender_mcp_geom::CsgNodeKind::Light => "light",
+                                _ => "obj",
+                            }, name);
+
+                            graph.add_node(blender_mcp_geom::CsgNode {
+                                id,
+                                name: name.to_string(),
+                                kind,
+                                minimum_access: "public".to_string(),
+                                transform: None,
+                                triangle_count: obj.get("polygons").and_then(|v| v.as_u64()).map(|c| c as usize),
+                                metadata: None,
+                            });
+                        }
+                    }
+                    if args.json {
+                        println!("{}", serde_json::to_string_pretty(&graph)?);
+                    } else {
+                        println!("=== Spatial CSG Graph: {} ===", graph.provenance.source);
+                        println!("  Nodes: {}", graph.nodes.len());
+                        println!("  Edges: {}", graph.edges.len());
+                        for node in &graph.nodes {
+                            println!("  • [{:?}] {}", node.kind, node.name);
+                        }
+                    }
+                }
+                Err(e) => eprintln!("Failed to query Blender scene for CSG: {}", e),
+            }
         }
         Some(Commands::Client(args)) => {
             match args.action {
@@ -898,6 +981,17 @@ fn default_output_dir() -> String {
 #[derive(Deserialize, JsonSchema)]
 struct GetSceneInfoParams {}
 
+#[derive(Deserialize, JsonSchema)]
+struct GetSceneCsgParams {
+    /// Source scene identifier or path (default: active_scene)
+    #[serde(default = "default_csg_source")]
+    source: String,
+}
+
+fn default_csg_source() -> String {
+    "active_scene".to_string()
+}
+
 pub fn create_default_registry(ipc: Arc<BlenderIpcClient>) -> ToolRegistry {
     let mut registry = ToolRegistry::new();
 
@@ -1005,6 +1099,67 @@ pub fn create_default_registry(ipc: Arc<BlenderIpcClient>) -> ToolRegistry {
                 ipc.send_command(&cmd)
                     .await
                     .map_err(|e| format!("Scene query failed: {}", e))
+            }
+        },
+    );
+
+    // 7. get_scene_csg tool (rr-csg-0.1+3d Compiler Semantic Graph)
+    let ipc_clone = Arc::clone(&ipc);
+    registry.register_fn(
+        "get_scene_csg",
+        "Generates a formal 3D Compiler Semantic Graph (rr-csg-0.1+3d) with typed nodes, edges, sockets, and colliders",
+        move |params: GetSceneCsgParams| {
+            let ipc = Arc::clone(&ipc_clone);
+            async move {
+                let cmd = serde_json::json!({
+                    "type": "get_scene_info",
+                    "params": {}
+                });
+                let info = ipc.send_command(&cmd)
+                    .await
+                    .map_err(|e| format!("Scene query failed: {}", e))?;
+
+                let mut graph = blender_mcp_geom::SpatialCsgGraph::new(&params.source);
+                if let Some(objects) = info.get("objects").and_then(|v| v.as_array()) {
+                    for obj in objects {
+                        let name = obj.get("name").and_then(|v| v.as_str()).unwrap_or("unknown");
+                        let obj_type = obj.get("type").and_then(|v| v.as_str()).unwrap_or("EMPTY");
+                        let kind = if name.starts_with("SOCKET_") {
+                            blender_mcp_geom::CsgNodeKind::Socket
+                        } else if name.starts_with("UCX_") || name.starts_with("UBX_") || name.starts_with("UCP_") {
+                            blender_mcp_geom::CsgNodeKind::Collider
+                        } else if obj_type == "MESH" {
+                            blender_mcp_geom::CsgNodeKind::Mesh
+                        } else if obj_type == "CAMERA" {
+                            blender_mcp_geom::CsgNodeKind::Camera
+                        } else if obj_type == "LIGHT" {
+                            blender_mcp_geom::CsgNodeKind::Light
+                        } else {
+                            blender_mcp_geom::CsgNodeKind::Object
+                        };
+
+                        let tri_count = obj.get("polygons").and_then(|v| v.as_u64()).map(|c| c as usize);
+                        let id = format!("{}:{}", match kind {
+                            blender_mcp_geom::CsgNodeKind::Socket => "socket",
+                            blender_mcp_geom::CsgNodeKind::Collider => "collider",
+                            blender_mcp_geom::CsgNodeKind::Mesh => "mesh",
+                            blender_mcp_geom::CsgNodeKind::Camera => "camera",
+                            blender_mcp_geom::CsgNodeKind::Light => "light",
+                            _ => "obj",
+                        }, name);
+
+                        graph.add_node(blender_mcp_geom::CsgNode {
+                            id,
+                            name: name.to_string(),
+                            kind,
+                            minimum_access: "public".to_string(),
+                            transform: None,
+                            triangle_count: tri_count,
+                            metadata: None,
+                        });
+                    }
+                }
+                serde_json::to_value(&graph).map_err(|e| e.to_string())
             }
         },
     );
@@ -1130,7 +1285,7 @@ mod tests {
         assert!(list_resp.error.is_none());
         let res_val = list_resp.result.unwrap();
         let tools = res_val.get("tools").unwrap().as_array().unwrap();
-        assert_eq!(tools.len(), 6);
+        assert_eq!(tools.len(), 7);
 
         let tool_names: Vec<&str> = tools
             .iter()
@@ -1142,6 +1297,7 @@ mod tests {
         assert!(tool_names.contains(&"rig_game_item"));
         assert!(tool_names.contains(&"craft_hero_prop"));
         assert!(tool_names.contains(&"get_scene_info"));
+        assert!(tool_names.contains(&"get_scene_csg"));
     }
 }
 
@@ -1168,6 +1324,197 @@ tracing.workspace = true
 
 ================================================================================
 
+## CRATE FILE: crates/blender-mcp-geom/src/csg.rs
+
+use serde::{Deserialize, Serialize};
+
+/// Compiler Semantic Graph exchange schema adapted for 3D spatial scenes (`rr-csg-0.1+3d`).
+/// Based on reflective-rust's CSG protocol with 3D spatial entity extensions.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SpatialCsgGraph {
+    pub schema_version: String,
+    pub provenance: CsgProvenance,
+    pub nodes: Vec<CsgNode>,
+    pub edges: Vec<CsgEdge>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CsgProvenance {
+    pub kind: String, // "extractor"
+    pub extractor: String, // "blender-mcp-rs"
+    pub domain: String, // "spatial-3d"
+    pub source: String,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum CsgNodeKind {
+    Scene,
+    Object,
+    Mesh,
+    Empty,
+    Camera,
+    Light,
+    Socket,
+    Collider,
+    Material,
+    Texture,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CsgSpan {
+    pub file: String,
+    pub start_line: u32,
+    pub end_line: u32,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CsgNode {
+    pub id: String,
+    pub name: String,
+    pub kind: CsgNodeKind,
+    pub minimum_access: String, // "public", "member", "owner", "administrator"
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub transform: Option<CsgTransform>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub triangle_count: Option<usize>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub metadata: Option<serde_json::Value>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CsgTransform {
+    pub position: [f32; 3],
+    pub rotation: [f32; 3],
+    pub scale: [f32; 3],
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum CsgRelationship {
+    Contains,
+    Parents,
+    Anchors,
+    CollidesWith,
+    AppliesMaterial,
+    SamplesTexture,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CsgEdge {
+    pub from: String,
+    pub to: String,
+    pub relationship: CsgRelationship,
+    pub minimum_access: String,
+}
+
+impl SpatialCsgGraph {
+    pub fn new(source: impl Into<String>) -> Self {
+        Self {
+            schema_version: "rr-csg-0.1+3d".to_string(),
+            provenance: CsgProvenance {
+                kind: "extractor".to_string(),
+                extractor: "blender-mcp-rs".to_string(),
+                domain: "spatial-3d".to_string(),
+                source: source.into(),
+            },
+            nodes: Vec::new(),
+            edges: Vec::new(),
+        }
+    }
+
+    pub fn add_node(&mut self, node: CsgNode) {
+        self.nodes.push(node);
+    }
+
+    pub fn add_edge(&mut self, from: impl Into<String>, to: impl Into<String>, rel: CsgRelationship) {
+        self.edges.push(CsgEdge {
+            from: from.into(),
+            to: to.into(),
+            relationship: rel,
+            minimum_access: "public".to_string(),
+        });
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_spatial_csg_construction() {
+        let mut graph = SpatialCsgGraph::new("dustwater_saloon.blend");
+
+        let root_node = CsgNode {
+            id: "obj:Hero_Barrel".to_string(),
+            name: "Hero_Barrel".to_string(),
+            kind: CsgNodeKind::Object,
+            minimum_access: "public".to_string(),
+            transform: Some(CsgTransform {
+                position: [0.0, 0.0, 0.0],
+                rotation: [0.0, 0.0, 0.0],
+                scale: [1.0, 1.0, 1.0],
+            }),
+            triangle_count: None,
+            metadata: None,
+        };
+
+        let mesh_node = CsgNode {
+            id: "mesh:Hero_Barrel_Mesh".to_string(),
+            name: "Hero_Barrel_Mesh".to_string(),
+            kind: CsgNodeKind::Mesh,
+            minimum_access: "public".to_string(),
+            transform: None,
+            triangle_count: Some(1840),
+            metadata: None,
+        };
+
+        let socket_node = CsgNode {
+            id: "socket:SOCKET_grip_primary".to_string(),
+            name: "SOCKET_grip_primary".to_string(),
+            kind: CsgNodeKind::Socket,
+            minimum_access: "public".to_string(),
+            transform: Some(CsgTransform {
+                position: [0.0, 0.4, 0.0],
+                rotation: [0.0, 0.0, 0.0],
+                scale: [1.0, 1.0, 1.0],
+            }),
+            triangle_count: None,
+            metadata: None,
+        };
+
+        let collider_node = CsgNode {
+            id: "collider:UCX_Hero_Barrel_01".to_string(),
+            name: "UCX_Hero_Barrel_01".to_string(),
+            kind: CsgNodeKind::Collider,
+            minimum_access: "public".to_string(),
+            transform: None,
+            triangle_count: Some(64),
+            metadata: Some(serde_json::json!({ "type": "convex_hull" })),
+        };
+
+        graph.add_node(root_node);
+        graph.add_node(mesh_node);
+        graph.add_node(socket_node);
+        graph.add_node(collider_node);
+
+        graph.add_edge("obj:Hero_Barrel", "mesh:Hero_Barrel_Mesh", CsgRelationship::Contains);
+        graph.add_edge("obj:Hero_Barrel", "socket:SOCKET_grip_primary", CsgRelationship::Anchors);
+        graph.add_edge("obj:Hero_Barrel", "collider:UCX_Hero_Barrel_01", CsgRelationship::CollidesWith);
+
+        assert_eq!(graph.schema_version, "rr-csg-0.1+3d");
+        assert_eq!(graph.nodes.len(), 4);
+        assert_eq!(graph.edges.len(), 3);
+
+        let json = serde_json::to_string_pretty(&graph).unwrap();
+        assert!(json.contains("rr-csg-0.1+3d"));
+        assert!(json.contains("SOCKET_grip_primary"));
+        assert!(json.contains("collides_with"));
+    }
+}
+
+================================================================================
+
 ## CRATE FILE: crates/blender-mcp-geom/src/lib.rs
 
 use std::path::Path;
@@ -1175,6 +1522,9 @@ use parry3d::math::Point;
 use parry3d::transformation::convex_hull;
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
+
+pub mod csg;
+pub use csg::*;
 
 #[derive(Error, Debug)]
 pub enum GeomError {
@@ -1547,8 +1897,10 @@ futures.workspace = true
 
 ## CRATE FILE: crates/blender-mcp-ipc/src/lib.rs
 
+use std::fs::OpenOptions;
 use std::path::{Path, PathBuf};
-use std::time::Duration;
+use std::time::{Duration, SystemTime, UNIX_EPOCH};
+use memmap2::MmapMut;
 use thiserror::Error;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::TcpStream;
@@ -1566,6 +1918,12 @@ pub enum IpcError {
 
     #[error("Protocol error: {0}")]
     Protocol(String),
+
+    #[error("Shared memory buffer overflow: capacity {capacity} bytes, requested {requested} bytes")]
+    BufferOverflow { capacity: usize, requested: usize },
+
+    #[error("Invalid frame header magic (expected 0x4652414D, got 0x{0:08X})")]
+    InvalidMagic(u32),
 }
 
 /// Control transport client communicating with the Blender addon instance.
@@ -1628,20 +1986,183 @@ impl BlenderIpcClient {
     }
 }
 
-/// Shared memory ring buffer reader for zero-copy viewport framebuffer streaming.
+pub const SHM_MAGIC: u32 = 0x4652414D; // 'FRAM' in ASCII
+
+#[repr(C)]
+#[derive(Debug, Clone, Copy)]
+pub struct FrameHeader {
+    pub magic: u32,
+    pub sequence: u64,
+    pub width: u32,
+    pub height: u32,
+    pub channels: u32,
+    pub timestamp_ns: u64,
+    pub data_size: u64,
+}
+
+pub const HEADER_SIZE: usize = std::mem::size_of::<FrameHeader>();
+
+#[derive(Debug, Clone)]
+pub struct FrameSnapshot {
+    pub sequence: u64,
+    pub width: u32,
+    pub height: u32,
+    pub channels: u32,
+    pub timestamp_ns: u64,
+    pub pixels: Vec<u8>,
+}
+
+/// Shared memory ring buffer for zero-copy viewport framebuffer streaming.
 pub struct SharedMemoryViewport {
     path: PathBuf,
+    mmap: MmapMut,
+    sequence: u64,
 }
 
 impl SharedMemoryViewport {
-    pub fn new(path: impl AsRef<Path>) -> Self {
-        Self {
-            path: path.as_ref().to_path_buf(),
+    pub fn create_or_open(path: impl AsRef<Path>, capacity: usize) -> Result<Self, IpcError> {
+        let path_buf = path.as_ref().to_path_buf();
+        if let Some(parent) = path_buf.parent() {
+            std::fs::create_dir_all(parent)?;
         }
+
+        let file = OpenOptions::new()
+            .read(true)
+            .write(true)
+            .create(true)
+            .truncate(false)
+            .open(&path_buf)?;
+
+        let current_len = file.metadata()?.len() as usize;
+        if current_len < capacity {
+            file.set_len(capacity as u64)?;
+        }
+
+        let mmap = unsafe { MmapMut::map_mut(&file)? };
+
+        Ok(Self {
+            path: path_buf,
+            mmap,
+            sequence: 0,
+        })
     }
 
     pub fn path(&self) -> &Path {
         &self.path
+    }
+
+    pub fn write_frame(
+        &mut self,
+        width: u32,
+        height: u32,
+        channels: u32,
+        data: &[u8],
+    ) -> Result<(), IpcError> {
+        let total_required = HEADER_SIZE + data.len();
+        if total_required > self.mmap.len() {
+            return Err(IpcError::BufferOverflow {
+                capacity: self.mmap.len(),
+                requested: total_required,
+            });
+        }
+
+        self.sequence += 1;
+        let timestamp_ns = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap_or_default()
+            .as_nanos() as u64;
+
+        let header = FrameHeader {
+            magic: SHM_MAGIC,
+            sequence: self.sequence,
+            width,
+            height,
+            channels,
+            timestamp_ns,
+            data_size: data.len() as u64,
+        };
+
+        unsafe {
+            let header_ptr = self.mmap.as_mut_ptr() as *mut FrameHeader;
+            std::ptr::write_unaligned(header_ptr, header);
+        }
+
+        self.mmap[HEADER_SIZE..HEADER_SIZE + data.len()].copy_from_slice(data);
+        self.mmap.flush()?;
+
+        Ok(())
+    }
+
+    pub fn read_latest_frame(&self) -> Result<Option<FrameSnapshot>, IpcError> {
+        if self.mmap.len() < HEADER_SIZE {
+            return Ok(None);
+        }
+
+        let header = unsafe {
+            let header_ptr = self.mmap.as_ptr() as *const FrameHeader;
+            std::ptr::read_unaligned(header_ptr)
+        };
+
+        if header.magic == 0 {
+            return Ok(None);
+        }
+
+        if header.magic != SHM_MAGIC {
+            return Err(IpcError::InvalidMagic(header.magic));
+        }
+
+        let data_size = header.data_size as usize;
+        let end = HEADER_SIZE + data_size;
+        if end > self.mmap.len() {
+            return Err(IpcError::BufferOverflow {
+                capacity: self.mmap.len(),
+                requested: end,
+            });
+        }
+
+        let pixels = self.mmap[HEADER_SIZE..end].to_vec();
+
+        Ok(Some(FrameSnapshot {
+            sequence: header.sequence,
+            width: header.width,
+            height: header.height,
+            channels: header.channels,
+            timestamp_ns: header.timestamp_ns,
+            pixels,
+        }))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_shared_memory_viewport_roundtrip() {
+        let temp_dir = std::env::temp_dir();
+        let shm_path = temp_dir.join("test_viewport.shm");
+
+        let mut viewport = SharedMemoryViewport::create_or_open(&shm_path, 1024 * 1024)
+            .expect("Failed to create shm viewport");
+
+        let fake_pixels = vec![128u8; 100 * 100 * 4];
+        viewport
+            .write_frame(100, 100, 4, &fake_pixels)
+            .expect("Failed to write frame");
+
+        let snapshot = viewport
+            .read_latest_frame()
+            .expect("Failed to read frame")
+            .expect("Expected frame snapshot");
+
+        assert_eq!(snapshot.sequence, 1);
+        assert_eq!(snapshot.width, 100);
+        assert_eq!(snapshot.height, 100);
+        assert_eq!(snapshot.channels, 4);
+        assert_eq!(snapshot.pixels.len(), 100 * 100 * 4);
+        assert_eq!(snapshot.pixels[0], 128);
+
+        let _ = std::fs::remove_file(shm_path);
     }
 }
 
