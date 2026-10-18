@@ -5,3 +5,8 @@
 *.pyc
 __pycache__/
 .env
+
+# Allow repository-level .agents directory despite global core.excludesFile
+!.agents/
+!**/.agents/
+!AGENTS.md
