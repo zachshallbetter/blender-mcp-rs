@@ -1,4 +1,4 @@
-# `blender-mcp-rs` 🦀⚡🎨
+# `blender-mcp-rs` 🦀
 
 > **The high-performance, reflective Rust Model Context Protocol (MCP) server & spatial agent engine for Blender.**
 
@@ -10,7 +10,7 @@
 
 ---
 
-## ⚡ Why `blender-mcp-rs`?
+## Why `blender-mcp-rs`?
 
 Upstream Python implementations (`blendermcp.org`) suffer from severe architectural limitations: Python Global Interpreter Lock (GIL) stalls, blocking stdio pipes, 30–50ms query overheads, and high-latency base64 image encoding.
 
@@ -28,7 +28,7 @@ Upstream Python implementations (`blendermcp.org`) suffer from severe architectu
 
 ---
 
-## 🏗️ Architecture
+## Architecture
 
 ```
 ┌────────────────────────────────────────────────────────────────────────┐
@@ -70,7 +70,7 @@ Upstream Python implementations (`blendermcp.org`) suffer from severe architectu
 
 ---
 
-## 📦 Workspace Crates
+## Workspace Crates
 
 - **`blender-mcp-reflect`**: Type reflection, parameter introspection, automatic JSON Schema derivation, and dynamic tool dispatch.
 - **`blender-mcp-protocol`**: Pure, zero-allocation Model Context Protocol JSON-RPC 2.0 specification implementation.
@@ -83,7 +83,7 @@ Upstream Python implementations (`blendermcp.org`) suffer from severe architectu
 
 ---
 
-## 📚 Documentation
+## Documentation
 
 - [**Tool Reference Catalog (`docs/tools.md`)**](docs/tools.md): Complete specification of all 37 reflective tools.
 - [**MCP Resource Provider (`docs/resources.md`)**](docs/resources.md): Interactive WebGL/HTML5 live viewport (`blender://viewport`) and scene CSG graph (`blender://scene_summary`).
@@ -94,7 +94,7 @@ Upstream Python implementations (`blendermcp.org`) suffer from severe architectu
 
 ---
 
-## 🚀 Quick Start
+## Quick Start
 
 ### Installation
 
@@ -140,7 +140,7 @@ blender-mcp lods "Chest" --pack-orm --ao ao.png --roughness rough.png --metallic
 
 ---
 
-## 📜 License
+## License
 
 Licensed under either of:
 
