@@ -148,7 +148,7 @@ pub fn synthesize_biological_mat(params: &BiologicalGrowthParams) -> BiologicalS
         "schema_version": "1.0.0",
         "asset_id": format!("bio.{}", params.archetype),
         "name": root_node,
-        "author": "Zachary Shallbetter / SnackStudio",
+        "author": "Zachary Shallbetter",
         "license": "Proprietary",
         "triangle_budget": {
             "max": 5000,

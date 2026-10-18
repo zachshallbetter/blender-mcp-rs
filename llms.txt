@@ -2,8 +2,8 @@
 
 > High-performance reflective Rust Model Context Protocol (MCP) server & spatial agent engine for Blender.
 
-- Authors: Zachary Shallbetter / SnackStudio
-- Repository: https://github.com/SnackStudio/blender-mcp-rs
+- Authors: Zachary Shallbetter (@zachshallbetter)
+- Repository: https://github.com/zachshallbetter/blender-mcp-rs
 - License: MIT OR Apache-2.0
 
 ## Core Documentation
@@ -19,7 +19,7 @@
 - [blender-mcp-geom](crates/blender-mcp-geom/src/lib.rs): Native 3D geometry engine, Rapier3D / Parry convex hull decomposition, and Spatial CSG (`rr-csg-0.1+3d`).
 - [blender-mcp-pbr](crates/blender-mcp-pbr/src/lib.rs): SIMD channel packing for Ambient Occlusion, Roughness, and Metallic (ORM) textures.
 - [blender-mcp-synth](crates/blender-mcp-synth/src/lib.rs): Procedural asset synthesis engine (desert flora, municipal props, and assembly grammars).
-- [blender-mcp-core](crates/blender-mcp-core/src/lib.rs): Central daemon, safe mode sandbox, and 12-tool reflective registry.
+- [blender-mcp-core](crates/blender-mcp-core/src/lib.rs): Central daemon, safe mode sandbox, and 31-tool reflective registry.
 - [blender-mcp-cli](crates/blender-mcp-cli/src/main.rs): Unified CLI binary (`blender-mcp`), addon lifecycle manager, and multi-agent client configurator.
 - [addon/blender_mcp](addon/blender_mcp/__init__.py): Companion Blender 4.0+ background daemon with viewport snapshot and camera controls.
 

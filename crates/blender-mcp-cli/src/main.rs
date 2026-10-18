@@ -7,7 +7,7 @@ use blender_mcp_core::BlenderMcpServer;
 
 #[derive(Parser)]
 #[command(name = "blender-mcp")]
-#[command(author = "Zachary Shallbetter / SnackStudio")]
+#[command(author = "Zachary Shallbetter")]
 #[command(version)]
 #[command(about = "High-performance Rust-native Model Context Protocol (MCP) server & spatial agent engine for Blender", long_about = None)]
 struct Cli {

@@ -1,6 +1,6 @@
 bl_info = {
     "name": "blender-mcp-rs Companion",
-    "author": "Zachary Shallbetter / SnackStudio",
+    "author": "Zachary Shallbetter",
     "version": (0, 4, 0),
     "blender": (4, 0, 0),
     "location": "View3D > Sidebar > MCP-RS",

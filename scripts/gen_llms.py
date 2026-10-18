@@ -11,7 +11,7 @@ def build_llms_full():
     output_lines = [
         "# blender-mcp-rs: Full Technical Context Corpus",
         f"Version: v{version}",
-        "Authors: Zachary Shallbetter / SnackStudio",
+        "Authors: Zachary Shallbetter (@zachshallbetter)",
         "License: MIT OR Apache-2.0",
         "",
         "This file is a programmatically generated, consolidated single-file context corpus",

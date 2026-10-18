@@ -1,6 +1,6 @@
 # blender-mcp-rs: Full Technical Context Corpus
 Version: v0.4.0
-Authors: Zachary Shallbetter / SnackStudio
+Authors: Zachary Shallbetter (@zachshallbetter)
 License: MIT OR Apache-2.0
 
 This file is a programmatically generated, consolidated single-file context corpus
@@ -92,7 +92,7 @@ Before tagging any release:
 # Agent Operational Charter & Repository Doctrine (`AGENTS.md`)
 
 **Repository:** `blender-mcp-rs`  
-**Owner:** Zachary Shallbetter / SnackStudio  
+**Owner:** Zachary Shallbetter (@zachshallbetter)  
 **Canonical Governance:** `AUTHORITY.md`, `VERSIONING.md`
 
 All autonomous engineering agents, contributors, and subagents working in this repository must adhere strictly to these rules.
@@ -126,7 +126,7 @@ Code or AI model outputs never silently alter formal specifications. If code dis
 
 ## 3. Ground-Up Ownership & Provenance
 
-This project is authored by **Zachary Shallbetter / SnackStudio**.
+This project is authored by **Zachary Shallbetter** (@zachshallbetter).
 - **Zero Third-Party Remnants**: Do not include legacy third-party author names, links, or upstream references.
 - **Cite Our Foundations**: Always cite and build upon our internal protocols and tools:
   - `formal-project-bootstrap`: Release governance, authority doctrine, verification gates.
@@ -385,8 +385,8 @@ resolver = "2"
 version = "0.4.0"
 edition = "2021"
 license = "MIT OR Apache-2.0"
-repository = "https://github.com/SnackStudio/blender-mcp-rs"
-authors = ["Zachary Shallbetter <zach@snack.studio>", "SnackStudio"]
+repository = "https://github.com/zachshallbetter/blender-mcp-rs"
+authors = ["Zachary Shallbetter <zach@shallbetter.com>"]
 description = "High-performance Rust-native Model Context Protocol (MCP) server & spatial agent engine for Blender"
 keywords = ["blender", "mcp", "agent", "gamedev", "3d"]
 categories = ["command-line-utilities", "graphics", "development-tools"]
@@ -697,7 +697,7 @@ use blender_mcp_core::BlenderMcpServer;
 
 #[derive(Parser)]
 #[command(name = "blender-mcp")]
-#[command(author = "Zachary Shallbetter / SnackStudio")]
+#[command(author = "Zachary Shallbetter")]
 #[command(version)]
 #[command(about = "High-performance Rust-native Model Context Protocol (MCP) server & spatial agent engine for Blender", long_about = None)]
 struct Cli {
@@ -4228,7 +4228,7 @@ pub fn synthesize_biological_mat(params: &BiologicalGrowthParams) -> BiologicalS
         "schema_version": "1.0.0",
         "asset_id": format!("bio.{}", params.archetype),
         "name": root_node,
-        "author": "Zachary Shallbetter / SnackStudio",
+        "author": "Zachary Shallbetter",
         "license": "Proprietary",
         "triangle_budget": {
             "max": 5000,

@@ -11,12 +11,11 @@ authors:
   - family-names: Shallbetter
     given-names: Zachary
     orcid: "https://orcid.org/0009-0009-9450-3429"
-    affiliation: "SnackStudio"
-version: "0.1.0"
+version: "0.4.0"
 date-released: "2026-10-18"
 license: "MIT OR Apache-2.0"
-repository-code: "https://github.com/SnackStudio/blender-mcp-rs"
-url: "https://github.com/SnackStudio/blender-mcp-rs"
+repository-code: "https://github.com/zachshallbetter/blender-mcp-rs"
+url: "https://github.com/zachshallbetter/blender-mcp-rs"
 keywords:
   - model-context-protocol
   - blender
