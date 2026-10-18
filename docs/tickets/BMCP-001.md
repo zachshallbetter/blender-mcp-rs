@@ -8,9 +8,11 @@
 ---
 
 ## 1. Problem Statement
+
 The user has directed that all repositories, authors, packages, and namespaces must be under `/zachshallbetter` (`Zachary Shallbetter`), with no references to any other organization or previous owners.
 
 ## 2. Scope of Changes
+
 1. `Cargo.toml`:
    - `repository = "https://github.com/zachshallbetter/blender-mcp-rs"`
    - `authors = ["Zachary Shallbetter <zach@shallbetter.com>"]` (or `zachshallbetter`)
@@ -31,6 +33,7 @@ The user has directed that all repositories, authors, packages, and namespaces m
    - Update author string and regenerate `llms.txt` and `llms-full.txt`.
 
 ## 3. Success Criteria
+
 - `grep -rnI "SnackStudio" .` returns 0 results.
 - `cargo test --workspace` passes 100%.
 - `cargo clippy --workspace --all-targets -- -D warnings` passes with 0 warnings.

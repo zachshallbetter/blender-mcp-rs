@@ -1,5 +1,6 @@
 pub mod sandbox;
 pub mod trajectory;
+pub mod polyhaven;
 
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -878,6 +879,31 @@ pub fn create_default_registry(ipc: Arc<BlenderIpcClient>, trajectory: Arc<Traje
         "search_assets",
         "Search open CC0 asset libraries (Polyhaven, Sketchfab, Polypizza) for models, textures, and HDRIs",
         |params: SearchAssetsParams| async move {
+            let src = params.source.to_lowercase();
+            if src == "polyhaven" {
+                match polyhaven::search_polyhaven(&params.query, None, None, params.limit).await {
+                    Ok(assets) => {
+                        let count = assets.len();
+                        return Ok(serde_json::json!({
+                            "status": "success",
+                            "source": "polyhaven",
+                            "query": params.query,
+                            "count": count,
+                            "results": assets,
+                        }));
+                    }
+                    Err(e) => {
+                        return Ok(serde_json::json!({
+                            "status": "partial",
+                            "source": "polyhaven",
+                            "query": params.query,
+                            "error": e.to_string(),
+                            "notice": "Online asset query fallback active."
+                        }));
+                    }
+                }
+            }
+
             Ok(serde_json::json!({
                 "status": "success",
                 "source": params.source,
@@ -898,6 +924,38 @@ pub fn create_default_registry(ipc: Arc<BlenderIpcClient>, trajectory: Arc<Traje
         move |params: ImportAssetParams| {
             let ipc = Arc::clone(&ipc_clone);
             async move {
+                let src = params.source.to_lowercase();
+                if src == "polyhaven" {
+                    match polyhaven::get_polyhaven_download_url(&params.id, "1k").await {
+                        Ok(url) => {
+                            let temp_dir = std::env::temp_dir().join("blender_mcp_assets");
+                            let filename = url.split('/').next_back().unwrap_or("asset.gltf");
+                            let dest_file = temp_dir.join(filename);
+                            if let Ok(path) = polyhaven::download_asset_file(&url, &dest_file).await {
+                                let path_str = path.display().to_string();
+                                let py_code = if path_str.ends_with(".gltf") || path_str.ends_with(".glb") {
+                                    format!("import bpy\nbpy.ops.import_scene.gltf(filepath=r'{}')\nprint('Imported GLTF from {}')\n", path_str, path_str)
+                                } else if path_str.ends_with(".hdr") || path_str.ends_with(".exr") {
+                                    format!("import bpy\nnode_tree = bpy.context.scene.world.node_tree\nnode = node_tree.nodes.new('ShaderNodeTexEnvironment')\nnode.image = bpy.data.images.load(r'{}')\nprint('Loaded environment texture')\n", path_str)
+                                } else {
+                                    format!("import bpy\nimg = bpy.data.images.load(r'{}')\nprint('Loaded image texture')\n", path_str)
+                                };
+
+                                let cmd = serde_json::json!({
+                                    "type": "execute_code",
+                                    "params": { "code": py_code }
+                                });
+                                return ipc.send_command(&cmd)
+                                    .await
+                                    .map_err(|e| format!("Asset import into Blender failed: {}", e));
+                            }
+                        }
+                        Err(e) => {
+                            tracing::warn!("Polyhaven download lookup error: {}", e);
+                        }
+                    }
+                }
+
                 let cmd = serde_json::json!({
                     "type": "execute_code",
                     "params": {
