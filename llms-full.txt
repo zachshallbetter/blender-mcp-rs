@@ -270,7 +270,7 @@ Upstream Python implementations (`blendermcp.org`) suffer from severe architectu
 - [**Architecture & Doctrine (`docs/architecture.md`)**](docs/architecture.md): Dual-transport IPC, zero-copy shared memory streaming, and spatial CSG (`rr-csg-0.1+3d`).
 - [**Blender Companion Addon (`docs/addon.md`)**](docs/addon.md): Installation, headless configuration, and socket daemon setup.
 - [**Game Engine Asset Pipeline (`docs/game-pipeline.md`)**](docs/game-pipeline.md): Multi-LOD decimation, Rapier3D `UCX_*` collision hulls, and SIMD ORM packing.
-- [**Ticket & Release Board (`docs/tickets/BOARD.md`)**](docs/tickets/BOARD.md): Formal tracking board, Epics, and completion verification.
+- [**Ticket & Release Board (GitHub Project #41)**](https://github.com/users/zachshallbetter/projects/41): Formal tracking board, Epics, and completion verification.
 
 ---
 
