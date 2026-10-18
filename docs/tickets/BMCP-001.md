@@ -2,6 +2,7 @@
 
 **Epic:** EPIC-1 (Namespace & Attribution Standardization)  
 **Owner:** A (Autonomous Agent)  
+**Issue:** [#1](https://github.com/zachshallbetter/blender-mcp-rs/issues/1)  
 **Status:** done  
 **Target:** 2026-10-17  
 

@@ -2,6 +2,7 @@
 
 **Epic:** EPIC-5 (Interactive Web/HTML Viewport Resource)  
 **Owner:** A (Autonomous Agent)  
+**Issue:** [#5](https://github.com/zachshallbetter/blender-mcp-rs/issues/5)  
 **Status:** done  
 **Target:** 2026-10-17  
 

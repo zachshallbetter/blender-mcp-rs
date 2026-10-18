@@ -1,7 +1,7 @@
 # blender-mcp-rs Ticket Board
 
-The work in flight for `blender-mcp-rs`, who owns it, and what "done" means.
-Namespace: `zachshallbetter` (`https://github.com/zachshallbetter/blender-mcp-rs`).
+Namespace: `zachshallbetter` (`https://github.com/zachshallbetter/blender-mcp-rs`).  
+Project Board: [GitHub Project #41 (blender-mcp-rs)](https://github.com/users/zachshallbetter/projects/41)
 
 Owners:
 - **Z**: Zachary Shallbetter (`zachshallbetter`)
@@ -39,13 +39,13 @@ Statuses:
 
 | # | Epic | Ticket | Owner | Status | Done When |
 |---|---|---|---|---|---|
-| **BMCP-001** | EPIC-1 | **Standardize namespace to `zachshallbetter` across entire repository.** Remove all lingering third-party or team names. Update `Cargo.toml`, `CITATION.cff`, `.zenodo.json`, `AGENTS.md`, `README.md`, `addon`, `synth`, and `llms.txt`. | A | done | All references point strictly to `https://github.com/zachshallbetter/blender-mcp-rs` and `Zachary Shallbetter`; 0 occurrences of extraneous organization names. |
-| **BMCP-002** | EPIC-2 | **Polyhaven CC0 Live Asset Search & HTTP Downloader.** Wire real HTTP queries to `https://api.polyhaven.com/assets` in `search_assets` and automated download/import into Blender in `import_asset`. | A | done | `search_assets(source="polyhaven", query="wood")` returns live assets; `import_asset` downloads and creates PBR material or model in live Blender. |
-| **BMCP-003** | EPIC-3 | **Live Shared Memory Viewport Streaming Hook in Companion Addon.** Implement frame writing into `SharedMemoryViewport` memory-mapped ring buffer in `addon/blender_mcp` with `start_viewport_stream`, `stop_viewport_stream`, and `read_viewport_frame`. | A | done | Addon writes uncompressed frames directly to memory map; client reads frames with sub-microsecond latency. |
-| **BMCP-004** | EPIC-4 | **Live Spatial CSG Boolean & Socket Snapping Tool.** Implement `apply_scene_csg` tool in `blender-mcp-core` allowing boolean union/difference/intersection and snapping objects to semantic sockets (`SOCKET_*`). | A | done | Tool executes boolean modifier or matrix transform snapping object A's socket to object B's socket; verified with test suite. |
-| **BMCP-005** | EPIC-5 | **Interactive Web/HTML Viewport Resource (`blender://viewport`).** Expose MCP resource `blender://viewport` returning live HTML5 Canvas/WebGL webview for client UIs. | A | done | Server serves `resources/list` and `resources/read` for `blender://viewport` with embedded interactive viewer and pick raycasting. |
-| **BMCP-006** | EPIC-6 | **Game-Ready Multi-LOD Generation & Collision Hull Pipeline.** Implement `generate_lods_and_collision` tool for automatic decimation and `UCX_*` physics colliders. | A | done | Automatically creates LOD0-3 mesh hierarchy with decimate modifiers and convex collision hulls. |
-| **BMCP-007** | EPIC-7 | **Procedural Armature & Skinning Pipeline.** Implement `generate_armature_rig` for bone hierarchies and automatic weights parenting. | A | done | Generates standard biped/quadruped/mechanical bone rigs with vertex groups bound to geometry. |
+| [**BMCP-001**](https://github.com/zachshallbetter/blender-mcp-rs/issues/1) | EPIC-1 | **Standardize namespace to `zachshallbetter` across entire repository.** Remove all lingering third-party or team names. Update `Cargo.toml`, `CITATION.cff`, `.zenodo.json`, `AGENTS.md`, `README.md`, `addon`, `synth`, and `llms.txt`. | A | done | All references point strictly to `https://github.com/zachshallbetter/blender-mcp-rs` and `Zachary Shallbetter`; 0 occurrences of extraneous organization names. |
+| [**BMCP-002**](https://github.com/zachshallbetter/blender-mcp-rs/issues/2) | EPIC-2 | **Polyhaven CC0 Live Asset Search & HTTP Downloader.** Wire real HTTP queries to `https://api.polyhaven.com/assets` in `search_assets` and automated download/import into Blender in `import_asset`. | A | done | `search_assets(source="polyhaven", query="wood")` returns live assets; `import_asset` downloads and creates PBR material or model in live Blender. |
+| [**BMCP-003**](https://github.com/zachshallbetter/blender-mcp-rs/issues/3) | EPIC-3 | **Live Shared Memory Viewport Streaming Hook in Companion Addon.** Implement frame writing into `SharedMemoryViewport` memory-mapped ring buffer in `addon/blender_mcp` with `start_viewport_stream`, `stop_viewport_stream`, and `read_viewport_frame`. | A | done | Addon writes uncompressed frames directly to memory map; client reads frames with sub-microsecond latency. |
+| [**BMCP-004**](https://github.com/zachshallbetter/blender-mcp-rs/issues/4) | EPIC-4 | **Live Spatial CSG Boolean & Socket Snapping Tool.** Implement `apply_scene_csg` tool in `blender-mcp-core` allowing boolean union/difference/intersection and snapping objects to semantic sockets (`SOCKET_*`). | A | done | Tool executes boolean modifier or matrix transform snapping object A's socket to object B's socket; verified with test suite. |
+| [**BMCP-005**](https://github.com/zachshallbetter/blender-mcp-rs/issues/5) | EPIC-5 | **Interactive Web/HTML Viewport Resource (`blender://viewport`).** Expose MCP resource `blender://viewport` returning live HTML5 Canvas/WebGL webview for client UIs. | A | done | Server serves `resources/list` and `resources/read` for `blender://viewport` with embedded interactive viewer and pick raycasting. |
+| [**BMCP-006**](https://github.com/zachshallbetter/blender-mcp-rs/issues/6) | EPIC-6 | **Game-Ready Multi-LOD Generation & Collision Hull Pipeline.** Implement `generate_lods_and_collision` tool for automatic decimation and `UCX_*` physics colliders. | A | done | Automatically creates LOD0-3 mesh hierarchy with decimate modifiers and convex collision hulls. |
+| [**BMCP-007**](https://github.com/zachshallbetter/blender-mcp-rs/issues/7) | EPIC-7 | **Procedural Armature & Skinning Pipeline.** Implement `generate_armature_rig` for bone hierarchies and automatic weights parenting. | A | done | Generates standard biped/quadruped/mechanical bone rigs with vertex groups bound to geometry. |
 
 ---
 

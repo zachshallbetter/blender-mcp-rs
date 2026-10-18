@@ -2,6 +2,7 @@
 
 **Epic:** EPIC-7 (Rigging & Animation Retargeting Tools)  
 **Owner:** A (Autonomous Agent)  
+**Issue:** [#7](https://github.com/zachshallbetter/blender-mcp-rs/issues/7)  
 **Status:** done  
 **Target:** 2026-10-17  
 

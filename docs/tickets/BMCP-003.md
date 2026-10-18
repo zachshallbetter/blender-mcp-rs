@@ -2,6 +2,7 @@
 
 **Epic:** EPIC-3 (Live Shared Memory Viewport Streaming)  
 **Owner:** A (Autonomous Agent)  
+**Issue:** [#3](https://github.com/zachshallbetter/blender-mcp-rs/issues/3)  
 **Status:** done  
 **Target:** 2026-10-17  
 

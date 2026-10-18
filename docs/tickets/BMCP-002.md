@@ -2,6 +2,7 @@
 
 **Epic:** EPIC-2 (Live Asset Library Integration)  
 **Owner:** A (Autonomous Agent)  
+**Issue:** [#2](https://github.com/zachshallbetter/blender-mcp-rs/issues/2)  
 **Status:** done  
 **Target:** 2026-10-17  
 

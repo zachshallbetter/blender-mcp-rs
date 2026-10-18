@@ -2,6 +2,7 @@
 
 **Epic:** EPIC-4 (Live Spatial CSG Boolean Operations & Socket Snapping)  
 **Owner:** A (Autonomous Agent)  
+**Issue:** [#4](https://github.com/zachshallbetter/blender-mcp-rs/issues/4)  
 **Status:** done  
 **Target:** 2026-10-17  
 

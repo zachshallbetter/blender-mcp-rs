@@ -2,6 +2,7 @@
 
 **Epic:** EPIC-6 (Multi-LOD & Collision Hull Pipeline)  
 **Owner:** A (Autonomous Agent)  
+**Issue:** [#6](https://github.com/zachshallbetter/blender-mcp-rs/issues/6)  
 **Status:** done  
 **Target:** 2026-10-17  
 
