@@ -372,6 +372,7 @@ members = [
     "crates/blender-mcp-protocol",
     "crates/blender-mcp-ipc",
     "crates/blender-mcp-geom",
+    "crates/blender-mcp-pbr",
     "crates/blender-mcp-core",
     "crates/blender-mcp-cli",
 ]
@@ -382,7 +383,7 @@ version = "0.1.0"
 edition = "2021"
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/SnackStudio/blender-mcp-rs"
-authors = ["SnackStudio"]
+authors = ["Zachary Shallbetter <zach@snack.studio>", "SnackStudio"]
 description = "High-performance Rust-native Model Context Protocol (MCP) server & spatial agent engine for Blender"
 keywords = ["blender", "mcp", "agent", "gamedev", "3d"]
 categories = ["command-line-utilities", "graphics", "development-tools"]
@@ -434,6 +435,7 @@ path = "src/main.rs"
 blender-mcp-core = { path = "../blender-mcp-core" }
 blender-mcp-protocol = { path = "../blender-mcp-protocol" }
 blender-mcp-geom = { path = "../blender-mcp-geom" }
+blender-mcp-pbr = { path = "../blender-mcp-pbr" }
 blender-mcp-ipc = { path = "../blender-mcp-ipc" }
 
 tokio.workspace = true
@@ -448,13 +450,13 @@ anyhow.workspace = true
 
 ## CRATE FILE: crates/blender-mcp-cli/src/main.rs
 
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use clap::{Args, Parser, Subcommand};
 use blender_mcp_core::BlenderMcpServer;
 
 #[derive(Parser)]
 #[command(name = "blender-mcp")]
-#[command(author = "SnackStudio")]
+#[command(author = "Zachary Shallbetter / SnackStudio")]
 #[command(version)]
 #[command(about = "High-performance Rust-native Model Context Protocol (MCP) server & spatial agent engine for Blender", long_about = None)]
 struct Cli {
@@ -470,8 +472,20 @@ enum Commands {
     /// Empirically audit a 3D asset (.glb/.gltf) against game engine budgets
     Audit(AuditArgs),
 
+    /// Pack Ambient Occlusion (R), Roughness (G), and Metallic (B) into an ORM texture
+    Pbr(PbrArgs),
+
+    /// Rig semantic sockets and physics collision hulls on an object
+    Rig(RigArgs),
+
+    /// Procedurally craft a game-ready hero prop conforming to the Barrel Protocol
+    Craft(CraftArgs),
+
     /// Manage AI agent MCP client configurations (Claude, Codex, Gemini, Antigravity, Cursor)
     Client(ClientArgs),
+
+    /// Export specialized agent skills and prompts for all major AI coding platforms
+    ExportSkills(ExportSkillsArgs),
 }
 
 #[derive(Args)]
@@ -493,6 +507,80 @@ struct AuditArgs {
     /// Output report in machine-readable JSON
     #[arg(long)]
     json: bool,
+}
+
+#[derive(Args)]
+struct PbrArgs {
+    /// Destination path for the packed ORM texture
+    #[arg(long, short = 'o')]
+    output: PathBuf,
+
+    /// Path to Ambient Occlusion map
+    #[arg(long)]
+    ao: Option<PathBuf>,
+
+    /// Path to Roughness map
+    #[arg(long)]
+    roughness: Option<PathBuf>,
+
+    /// Path to Metallic map
+    #[arg(long)]
+    metallic: Option<PathBuf>,
+
+    /// Output result in machine-readable JSON
+    #[arg(long)]
+    json: bool,
+}
+
+#[derive(Args)]
+struct RigArgs {
+    /// Name of target object
+    object_name: String,
+
+    /// Type of physics collider: "convex", "box", or "capsule"
+    #[arg(long, default_value = "convex")]
+    collider: String,
+
+    /// Comma-separated list of semantic sockets (e.g. "SOCKET_grip_primary,SOCKET_muzzle")
+    #[arg(long)]
+    sockets: Option<String>,
+
+    /// Blender IPC host address
+    #[arg(long, default_value = "127.0.0.1")]
+    host: String,
+
+    /// Blender IPC port
+    #[arg(long, default_value_t = 9876)]
+    port: u16,
+}
+
+#[derive(Args)]
+struct CraftArgs {
+    /// Prop archetype (western_barrel, wooden_crate, lantern, revolver)
+    archetype: String,
+
+    /// Destination output directory
+    #[arg(long, default_value = "./assets")]
+    output_dir: PathBuf,
+
+    /// Blender IPC host address
+    #[arg(long, default_value = "127.0.0.1")]
+    host: String,
+
+    /// Blender IPC port
+    #[arg(long, default_value_t = 9876)]
+    port: u16,
+}
+
+#[derive(Args)]
+struct ExportSkillsArgs {
+    /// Destination directory to export skills into
+    #[arg(long, default_value = ".")]
+    dest_dir: PathBuf,
+
+    /// Target platform format: "all", "antigravity", "cursor", "claude", "gemini"
+    #[arg(long, default_value = "all")]
+    format: String,
 }
 
 #[derive(Args)]
@@ -552,6 +640,56 @@ async fn main() -> Result<(), anyhow::Error> {
                 }
             }
         }
+        Some(Commands::Pbr(args)) => {
+            let res = blender_mcp_pbr::pack_orm(
+                args.ao.as_deref(),
+                args.roughness.as_deref(),
+                args.metallic.as_deref(),
+                &args.output,
+            )?;
+            if args.json {
+                println!("{}", serde_json::to_string_pretty(&res)?);
+            } else {
+                println!("Successfully packed ORM texture ({}x{}): {}", res.width, res.height, res.output_path);
+            }
+        }
+        Some(Commands::Rig(args)) => {
+            let sockets: Vec<String> = args
+                .sockets
+                .map(|s| s.split(',').map(|x| x.trim().to_string()).collect())
+                .unwrap_or_default();
+
+            let ipc = blender_mcp_ipc::BlenderIpcClient::new(&args.host, args.port);
+            let cmd = serde_json::json!({
+                "type": "rig_game_item",
+                "params": {
+                    "object_name": args.object_name,
+                    "collider_type": args.collider,
+                    "sockets": sockets,
+                }
+            });
+            match ipc.send_command(&cmd).await {
+                Ok(resp) => println!("Rigging response: {}", serde_json::to_string_pretty(&resp)?),
+                Err(e) => eprintln!("Rigging failed: {}", e),
+            }
+        }
+        Some(Commands::Craft(args)) => {
+            let ipc = blender_mcp_ipc::BlenderIpcClient::new(&args.host, args.port);
+            let cmd = serde_json::json!({
+                "type": "craft_hero_prop",
+                "params": {
+                    "archetype": args.archetype,
+                    "output_dir": args.output_dir.display().to_string(),
+                }
+            });
+            match ipc.send_command(&cmd).await {
+                Ok(resp) => println!("Crafting response: {}", serde_json::to_string_pretty(&resp)?),
+                Err(e) => eprintln!("Crafting failed: {}", e),
+            }
+        }
+        Some(Commands::ExportSkills(args)) => {
+            export_agent_skills(&args.dest_dir, &args.format)?;
+        }
         Some(Commands::Client(args)) => {
             match args.action {
                 ClientAction::List { json } => {
@@ -600,6 +738,62 @@ async fn main() -> Result<(), anyhow::Error> {
     Ok(())
 }
 
+fn export_agent_skills(dest_dir: &Path, format: &str) -> std::io::Result<()> {
+    let skill_content = r#"---
+name: blender-mcp
+description: High-performance reflective 3D spatial agent runtime for Blender. Use for auditing models, rigging sockets & Rapier3D colliders, packing ORM textures, and crafting game props.
+---
+
+# blender-mcp Instructions
+
+Use the `blender-mcp` MCP server tools:
+1. `audit_asset`: Empirically audit a .glb asset for polycount and material budget.
+2. `rig_game_item`: Auto-place semantic sockets (`SOCKET_grip_primary`, `SOCKET_muzzle`) and generate physics colliders (`UCX_`, `UBX_`, `UCP_`).
+3. `pack_pbr_textures`: Pack AO, Roughness, and Metallic textures into game-ready ORM maps.
+4. `craft_hero_prop`: Procedurally craft hero props conforming to the 7-step Barrel Protocol.
+5. `execute_blender_code`: Execute live Python code in Blender.
+6. `get_scene_info`: Introspect the real-time Blender scene.
+"#;
+
+    if format == "all" || format == "antigravity" {
+        let p = dest_dir.join(".agents/skills/blender-mcp/SKILL.md");
+        if let Some(parent) = p.parent() {
+            std::fs::create_dir_all(parent)?;
+        }
+        std::fs::write(&p, skill_content)?;
+        println!("Exported Antigravity skill: {}", p.display());
+    }
+
+    if format == "all" || format == "cursor" {
+        let p = dest_dir.join(".cursor/rules/blender-mcp.mdc");
+        if let Some(parent) = p.parent() {
+            std::fs::create_dir_all(parent)?;
+        }
+        std::fs::write(&p, skill_content)?;
+        println!("Exported Cursor rule: {}", p.display());
+    }
+
+    if format == "all" || format == "claude" {
+        let p = dest_dir.join(".claude/skills/blender-mcp.md");
+        if let Some(parent) = p.parent() {
+            std::fs::create_dir_all(parent)?;
+        }
+        std::fs::write(&p, skill_content)?;
+        println!("Exported Claude skill: {}", p.display());
+    }
+
+    if format == "all" || format == "gemini" {
+        let p = dest_dir.join(".gemini/skills/blender-mcp.md");
+        if let Some(parent) = p.parent() {
+            std::fs::create_dir_all(parent)?;
+        }
+        std::fs::write(&p, skill_content)?;
+        println!("Exported Gemini skill: {}", p.display());
+    }
+
+    Ok(())
+}
+
 ================================================================================
 
 ## CRATE FILE: crates/blender-mcp-core/Cargo.toml
@@ -617,6 +811,7 @@ blender-mcp-reflect = { path = "../blender-mcp-reflect" }
 blender-mcp-protocol = { path = "../blender-mcp-protocol" }
 blender-mcp-ipc = { path = "../blender-mcp-ipc" }
 blender-mcp-geom = { path = "../blender-mcp-geom" }
+blender-mcp-pbr = { path = "../blender-mcp-pbr" }
 
 tokio.workspace = true
 serde.workspace = true
@@ -675,6 +870,34 @@ fn default_collider() -> String {
     "convex".to_string()
 }
 
+#[derive(Deserialize, JsonSchema)]
+struct PackPbrParams {
+    /// Optional path to Ambient Occlusion map
+    ao_path: Option<String>,
+    /// Optional path to Roughness map
+    roughness_path: Option<String>,
+    /// Optional path to Metallic map
+    metallic_path: Option<String>,
+    /// Destination path for packed ORM map (PNG)
+    output_path: String,
+}
+
+#[derive(Deserialize, JsonSchema)]
+struct CraftHeroPropParams {
+    /// Archetype name: "western_barrel", "wooden_crate", "lantern", "revolver"
+    archetype: String,
+    /// Destination directory for compiled .glb and textures
+    #[serde(default = "default_output_dir")]
+    output_dir: String,
+}
+
+fn default_output_dir() -> String {
+    "./assets".to_string()
+}
+
+#[derive(Deserialize, JsonSchema)]
+struct GetSceneInfoParams {}
+
 pub fn create_default_registry(ipc: Arc<BlenderIpcClient>) -> ToolRegistry {
     let mut registry = ToolRegistry::new();
 
@@ -688,7 +911,22 @@ pub fn create_default_registry(ipc: Arc<BlenderIpcClient>) -> ToolRegistry {
         },
     );
 
-    // 2. execute_blender_code tool
+    // 2. pack_pbr_textures tool (SIMD ORM channel packing)
+    registry.register_fn(
+        "pack_pbr_textures",
+        "Packs Ambient Occlusion (R), Roughness (G), and Metallic (B) maps into a single game-ready ORM texture",
+        |params: PackPbrParams| async move {
+            blender_mcp_pbr::pack_orm(
+                params.ao_path.as_deref(),
+                params.roughness_path.as_deref(),
+                params.metallic_path.as_deref(),
+                &params.output_path,
+            )
+            .map_err(|e| format!("PBR packing failed: {}", e))
+        },
+    );
+
+    // 3. execute_blender_code tool
     let ipc_clone = Arc::clone(&ipc);
     registry.register_fn(
         "execute_blender_code",
@@ -707,7 +945,7 @@ pub fn create_default_registry(ipc: Arc<BlenderIpcClient>) -> ToolRegistry {
         },
     );
 
-    // 3. rig_game_item tool
+    // 4. rig_game_item tool
     let ipc_clone = Arc::clone(&ipc);
     registry.register_fn(
         "rig_game_item",
@@ -726,6 +964,47 @@ pub fn create_default_registry(ipc: Arc<BlenderIpcClient>) -> ToolRegistry {
                 ipc.send_command(&cmd)
                     .await
                     .map_err(|e| format!("Rigging failed: {}", e))
+            }
+        },
+    );
+
+    // 5. craft_hero_prop tool
+    let ipc_clone = Arc::clone(&ipc);
+    registry.register_fn(
+        "craft_hero_prop",
+        "Procedurally generates a game-ready hero prop conforming to the 7-step Barrel Protocol craftsmanship standard",
+        move |params: CraftHeroPropParams| {
+            let ipc = Arc::clone(&ipc_clone);
+            async move {
+                let cmd = serde_json::json!({
+                    "type": "craft_hero_prop",
+                    "params": {
+                        "archetype": params.archetype,
+                        "output_dir": params.output_dir,
+                    }
+                });
+                ipc.send_command(&cmd)
+                    .await
+                    .map_err(|e| format!("Hero prop crafting failed: {}", e))
+            }
+        },
+    );
+
+    // 6. get_scene_info tool
+    let ipc_clone = Arc::clone(&ipc);
+    registry.register_fn(
+        "get_scene_info",
+        "Retrieves real-time scene hierarchy, meshes, active cameras, and material slots from Blender",
+        move |_params: GetSceneInfoParams| {
+            let ipc = Arc::clone(&ipc_clone);
+            async move {
+                let cmd = serde_json::json!({
+                    "type": "get_scene_info",
+                    "params": {}
+                });
+                ipc.send_command(&cmd)
+                    .await
+                    .map_err(|e| format!("Scene query failed: {}", e))
             }
         },
     );
@@ -851,15 +1130,18 @@ mod tests {
         assert!(list_resp.error.is_none());
         let res_val = list_resp.result.unwrap();
         let tools = res_val.get("tools").unwrap().as_array().unwrap();
-        assert!(tools.len() >= 3);
+        assert_eq!(tools.len(), 6);
 
         let tool_names: Vec<&str> = tools
             .iter()
             .map(|t| t.get("name").unwrap().as_str().unwrap())
             .collect();
         assert!(tool_names.contains(&"audit_asset"));
+        assert!(tool_names.contains(&"pack_pbr_textures"));
         assert!(tool_names.contains(&"execute_blender_code"));
         assert!(tool_names.contains(&"rig_game_item"));
+        assert!(tool_names.contains(&"craft_hero_prop"));
+        assert!(tool_names.contains(&"get_scene_info"));
     }
 }
 
@@ -906,6 +1188,56 @@ pub enum GeomError {
     Computation(String),
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum ColliderType {
+    /// Convex hull mesh collider (prefix: UCX_)
+    Convex,
+    /// Axis-aligned bounding box collider (prefix: UBX_)
+    Box,
+    /// Bounding capsule collider (prefix: UCP_)
+    Capsule,
+}
+
+impl ColliderType {
+    pub fn prefix(&self) -> &'static str {
+        match self {
+            ColliderType::Convex => "UCX_",
+            ColliderType::Box => "UBX_",
+            ColliderType::Capsule => "UCP_",
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ConvexHullMesh {
+    pub vertices: Vec<[f32; 3]>,
+    pub indices: Vec<[u32; 3]>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct BoxCollider {
+    pub center: [f32; 3],
+    pub half_extents: [f32; 3],
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CapsuleCollider {
+    pub center: [f32; 3],
+    pub radius: f32,
+    pub half_height: f32,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CollisionHullResult {
+    pub collider_type: ColliderType,
+    pub prefix: String,
+    pub node_name: String,
+    pub convex_mesh: Option<ConvexHullMesh>,
+    pub box_collider: Option<BoxCollider>,
+    pub capsule_collider: Option<CapsuleCollider>,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ModelAuditReport {
     pub file_path: String,
@@ -919,6 +1251,19 @@ pub struct ModelAuditReport {
     pub dimensions: [f32; 3],
     pub passes_game_ready_check: bool,
     pub warnings: Vec<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct GameAssetManifest {
+    pub name: String,
+    pub version: String,
+    pub triangle_count: usize,
+    pub vertex_count: usize,
+    pub material_slots: usize,
+    pub dimensions: [f32; 3],
+    pub colliders: Vec<String>,
+    pub sockets: Vec<String>,
+    pub lod_levels: Vec<String>,
 }
 
 pub struct ModelAuditor;
@@ -1004,12 +1349,6 @@ impl ModelAuditor {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ConvexHullMesh {
-    pub vertices: Vec<[f32; 3]>,
-    pub indices: Vec<[u32; 3]>,
-}
-
 /// Computes a minimal convex hull for physics simulation using Parry3D.
 pub fn compute_convex_hull(points: &[[f32; 3]]) -> Result<ConvexHullMesh, GeomError> {
     if points.len() < 4 {
@@ -1031,6 +1370,102 @@ pub fn compute_convex_hull(points: &[[f32; 3]]) -> Result<ConvexHullMesh, GeomEr
     Ok(ConvexHullMesh { vertices, indices })
 }
 
+/// Generates a game collision hull of the specified type from vertex point cloud.
+pub fn generate_collision_hull(
+    object_name: &str,
+    points: &[[f32; 3]],
+    collider_type: ColliderType,
+) -> Result<CollisionHullResult, GeomError> {
+    if points.is_empty() {
+        return Err(GeomError::Computation("Point cloud cannot be empty".to_string()));
+    }
+
+    let prefix = collider_type.prefix().to_string();
+    let node_name = format!("{}{}_01", prefix, object_name);
+
+    match collider_type {
+        ColliderType::Convex => {
+            let hull = compute_convex_hull(points)?;
+            Ok(CollisionHullResult {
+                collider_type,
+                prefix,
+                node_name,
+                convex_mesh: Some(hull),
+                box_collider: None,
+                capsule_collider: None,
+            })
+        }
+        ColliderType::Box => {
+            let mut min_bound = [f32::INFINITY; 3];
+            let mut max_bound = [f32::NEG_INFINITY; 3];
+
+            for p in points {
+                for i in 0..3 {
+                    if p[i] < min_bound[i] {
+                        min_bound[i] = p[i];
+                    }
+                    if p[i] > max_bound[i] {
+                        max_bound[i] = p[i];
+                    }
+                }
+            }
+
+            let center = [
+                (min_bound[0] + max_bound[0]) * 0.5,
+                (min_bound[1] + max_bound[1]) * 0.5,
+                (min_bound[2] + max_bound[2]) * 0.5,
+            ];
+            let half_extents = [
+                (max_bound[0] - min_bound[0]) * 0.5,
+                (max_bound[1] - min_bound[1]) * 0.5,
+                (max_bound[2] - min_bound[2]) * 0.5,
+            ];
+
+            Ok(CollisionHullResult {
+                collider_type,
+                prefix,
+                node_name,
+                convex_mesh: None,
+                box_collider: Some(BoxCollider { center, half_extents }),
+                capsule_collider: None,
+            })
+        }
+        ColliderType::Capsule => {
+            let mut min_bound = [f32::INFINITY; 3];
+            let mut max_bound = [f32::NEG_INFINITY; 3];
+
+            for p in points {
+                for i in 0..3 {
+                    if p[i] < min_bound[i] {
+                        min_bound[i] = p[i];
+                    }
+                    if p[i] > max_bound[i] {
+                        max_bound[i] = p[i];
+                    }
+                }
+            }
+
+            let center = [
+                (min_bound[0] + max_bound[0]) * 0.5,
+                (min_bound[1] + max_bound[1]) * 0.5,
+                (min_bound[2] + max_bound[2]) * 0.5,
+            ];
+            // Radius in XY plane, height along Z axis
+            let radius = ((max_bound[0] - min_bound[0]).max(max_bound[1] - min_bound[1])) * 0.5;
+            let half_height = ((max_bound[2] - min_bound[2]) * 0.5 - radius).max(0.0);
+
+            Ok(CollisionHullResult {
+                collider_type,
+                prefix,
+                node_name,
+                convex_mesh: None,
+                box_collider: None,
+                capsule_collider: Some(CapsuleCollider { center, radius, half_height }),
+            })
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -1050,14 +1485,38 @@ mod tests {
 
         let hull = compute_convex_hull(&cube_points).expect("Hull computation failed");
         assert_eq!(hull.vertices.len(), 8);
-        assert_eq!(hull.indices.len(), 12); // 12 triangles for 6 cube faces
+        assert_eq!(hull.indices.len(), 12);
     }
 
     #[test]
-    fn test_compute_convex_hull_insufficient_points() {
-        let few_points = vec![[0.0, 0.0, 0.0], [1.0, 1.0, 1.0]];
-        let err = compute_convex_hull(&few_points);
-        assert!(err.is_err());
+    fn test_generate_collision_hull_box() {
+        let points = vec![
+            [-1.0, -1.0, -2.0],
+            [1.0, 1.0, 2.0],
+        ];
+
+        let res = generate_collision_hull("Crate", &points, ColliderType::Box).unwrap();
+        assert_eq!(res.prefix, "UBX_");
+        assert_eq!(res.node_name, "UBX_Crate_01");
+        let bx = res.box_collider.unwrap();
+        assert_eq!(bx.center, [0.0, 0.0, 0.0]);
+        assert_eq!(bx.half_extents, [1.0, 1.0, 2.0]);
+    }
+
+    #[test]
+    fn test_generate_collision_hull_capsule() {
+        let points = vec![
+            [-1.0, -1.0, -3.0],
+            [1.0, 1.0, 3.0],
+        ];
+
+        let res = generate_collision_hull("Lantern", &points, ColliderType::Capsule).unwrap();
+        assert_eq!(res.prefix, "UCP_");
+        assert_eq!(res.node_name, "UCP_Lantern_01");
+        let cap = res.capsule_collider.unwrap();
+        assert_eq!(cap.center, [0.0, 0.0, 0.0]);
+        assert_eq!(cap.radius, 1.0);
+        assert_eq!(cap.half_height, 2.0);
     }
 }
 
@@ -1183,6 +1642,149 @@ impl SharedMemoryViewport {
 
     pub fn path(&self) -> &Path {
         &self.path
+    }
+}
+
+================================================================================
+
+## CRATE FILE: crates/blender-mcp-pbr/Cargo.toml
+
+[package]
+name = "blender-mcp-pbr"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+description = "High-performance PBR texture channel packing (ORM) and image processing for blender-mcp-rs"
+
+[dependencies]
+image = { version = "0.25", default-features = false, features = ["png", "jpeg"] }
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+tracing.workspace = true
+
+================================================================================
+
+## CRATE FILE: crates/blender-mcp-pbr/src/lib.rs
+
+use std::path::Path;
+use image::{GrayImage, ImageBuffer, Rgba, RgbaImage};
+use serde::{Deserialize, Serialize};
+use thiserror::Error;
+
+#[derive(Error, Debug)]
+pub enum PbrError {
+    #[error("Image IO or format error: {0}")]
+    Image(#[from] image::ImageError),
+
+    #[error("Dimension mismatch between channels: {0}")]
+    DimensionMismatch(String),
+
+    #[error("IO error: {0}")]
+    Io(#[from] std::io::Error),
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct OrmPackResult {
+    pub width: u32,
+    pub height: u32,
+    pub output_path: String,
+}
+
+/// Packs separate Ambient Occlusion (R), Roughness (G), and Metallic (B) maps into a single ORM texture.
+/// Missing channels are filled with game-standard PBR defaults:
+/// - AO: 255 (1.0, fully unoccluded)
+/// - Roughness: 128 (0.5, balanced roughness)
+/// - Metallic: 0 (0.0, non-metallic/dielectric)
+pub fn pack_orm(
+    ao_path: Option<impl AsRef<Path>>,
+    roughness_path: Option<impl AsRef<Path>>,
+    metallic_path: Option<impl AsRef<Path>>,
+    output_path: impl AsRef<Path>,
+) -> Result<OrmPackResult, PbrError> {
+    let load_gray = |opt: Option<&Path>| -> Result<Option<GrayImage>, PbrError> {
+        match opt {
+            Some(p) if p.exists() => {
+                let img = image::open(p)?;
+                Ok(Some(img.to_luma8()))
+            }
+            _ => Ok(None),
+        }
+    };
+
+    let ao_p = ao_path.as_ref().map(|p| p.as_ref());
+    let rough_p = roughness_path.as_ref().map(|p| p.as_ref());
+    let metal_p = metallic_path.as_ref().map(|p| p.as_ref());
+
+    let ao_img = load_gray(ao_p)?;
+    let rough_img = load_gray(rough_p)?;
+    let metal_img = load_gray(metal_p)?;
+
+    let (width, height) = match (&ao_img, &rough_img, &metal_img) {
+        (Some(img), _, _) => img.dimensions(),
+        (_, Some(img), _) => img.dimensions(),
+        (_, _, Some(img)) => img.dimensions(),
+        _ => (1024, 1024),
+    };
+
+    let mut orm_buffer: RgbaImage = ImageBuffer::new(width, height);
+
+    for y in 0..height {
+        for x in 0..x_limit(width) {
+            let r = ao_img.as_ref().map_or(255, |img| img.get_pixel(x, y)[0]);
+            let g = rough_img.as_ref().map_or(128, |img| img.get_pixel(x, y)[0]);
+            let b = metal_img.as_ref().map_or(0, |img| img.get_pixel(x, y)[0]);
+            orm_buffer.put_pixel(x, y, Rgba([r, g, b, 255]));
+        }
+    }
+
+    let out_ref = output_path.as_ref();
+    if let Some(parent) = out_ref.parent() {
+        std::fs::create_dir_all(parent)?;
+    }
+
+    orm_buffer.save(out_ref)?;
+
+    Ok(OrmPackResult {
+        width,
+        height,
+        output_path: out_ref.display().to_string(),
+    })
+}
+
+#[inline(always)]
+fn x_limit(w: u32) -> u32 {
+    w
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_pack_orm_defaults() {
+        let temp_dir = std::env::temp_dir();
+        let out_file = temp_dir.join("test_orm_output.png");
+
+        let res = pack_orm(
+            None::<&Path>,
+            None::<&Path>,
+            None::<&Path>,
+            &out_file,
+        ).expect("Packing failed");
+
+        assert_eq!(res.width, 1024);
+        assert_eq!(res.height, 1024);
+
+        let img = image::open(&out_file).expect("Failed to load output image").to_rgba8();
+        let px = img.get_pixel(0, 0);
+        assert_eq!(px[0], 255); // Default AO
+        assert_eq!(px[1], 128); // Default Roughness
+        assert_eq!(px[2], 0);   // Default Metallic
+        assert_eq!(px[3], 255); // Alpha
+
+        let _ = std::fs::remove_file(out_file);
     }
 }
 

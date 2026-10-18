@@ -1,10 +1,10 @@
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use clap::{Args, Parser, Subcommand};
 use blender_mcp_core::BlenderMcpServer;
 
 #[derive(Parser)]
 #[command(name = "blender-mcp")]
-#[command(author = "SnackStudio")]
+#[command(author = "Zachary Shallbetter / SnackStudio")]
 #[command(version)]
 #[command(about = "High-performance Rust-native Model Context Protocol (MCP) server & spatial agent engine for Blender", long_about = None)]
 struct Cli {
@@ -20,8 +20,20 @@ enum Commands {
     /// Empirically audit a 3D asset (.glb/.gltf) against game engine budgets
     Audit(AuditArgs),
 
+    /// Pack Ambient Occlusion (R), Roughness (G), and Metallic (B) into an ORM texture
+    Pbr(PbrArgs),
+
+    /// Rig semantic sockets and physics collision hulls on an object
+    Rig(RigArgs),
+
+    /// Procedurally craft a game-ready hero prop conforming to the Barrel Protocol
+    Craft(CraftArgs),
+
     /// Manage AI agent MCP client configurations (Claude, Codex, Gemini, Antigravity, Cursor)
     Client(ClientArgs),
+
+    /// Export specialized agent skills and prompts for all major AI coding platforms
+    ExportSkills(ExportSkillsArgs),
 }
 
 #[derive(Args)]
@@ -43,6 +55,80 @@ struct AuditArgs {
     /// Output report in machine-readable JSON
     #[arg(long)]
     json: bool,
+}
+
+#[derive(Args)]
+struct PbrArgs {
+    /// Destination path for the packed ORM texture
+    #[arg(long, short = 'o')]
+    output: PathBuf,
+
+    /// Path to Ambient Occlusion map
+    #[arg(long)]
+    ao: Option<PathBuf>,
+
+    /// Path to Roughness map
+    #[arg(long)]
+    roughness: Option<PathBuf>,
+
+    /// Path to Metallic map
+    #[arg(long)]
+    metallic: Option<PathBuf>,
+
+    /// Output result in machine-readable JSON
+    #[arg(long)]
+    json: bool,
+}
+
+#[derive(Args)]
+struct RigArgs {
+    /// Name of target object
+    object_name: String,
+
+    /// Type of physics collider: "convex", "box", or "capsule"
+    #[arg(long, default_value = "convex")]
+    collider: String,
+
+    /// Comma-separated list of semantic sockets (e.g. "SOCKET_grip_primary,SOCKET_muzzle")
+    #[arg(long)]
+    sockets: Option<String>,
+
+    /// Blender IPC host address
+    #[arg(long, default_value = "127.0.0.1")]
+    host: String,
+
+    /// Blender IPC port
+    #[arg(long, default_value_t = 9876)]
+    port: u16,
+}
+
+#[derive(Args)]
+struct CraftArgs {
+    /// Prop archetype (western_barrel, wooden_crate, lantern, revolver)
+    archetype: String,
+
+    /// Destination output directory
+    #[arg(long, default_value = "./assets")]
+    output_dir: PathBuf,
+
+    /// Blender IPC host address
+    #[arg(long, default_value = "127.0.0.1")]
+    host: String,
+
+    /// Blender IPC port
+    #[arg(long, default_value_t = 9876)]
+    port: u16,
+}
+
+#[derive(Args)]
+struct ExportSkillsArgs {
+    /// Destination directory to export skills into
+    #[arg(long, default_value = ".")]
+    dest_dir: PathBuf,
+
+    /// Target platform format: "all", "antigravity", "cursor", "claude", "gemini"
+    #[arg(long, default_value = "all")]
+    format: String,
 }
 
 #[derive(Args)]
@@ -102,6 +188,56 @@ async fn main() -> Result<(), anyhow::Error> {
                 }
             }
         }
+        Some(Commands::Pbr(args)) => {
+            let res = blender_mcp_pbr::pack_orm(
+                args.ao.as_deref(),
+                args.roughness.as_deref(),
+                args.metallic.as_deref(),
+                &args.output,
+            )?;
+            if args.json {
+                println!("{}", serde_json::to_string_pretty(&res)?);
+            } else {
+                println!("Successfully packed ORM texture ({}x{}): {}", res.width, res.height, res.output_path);
+            }
+        }
+        Some(Commands::Rig(args)) => {
+            let sockets: Vec<String> = args
+                .sockets
+                .map(|s| s.split(',').map(|x| x.trim().to_string()).collect())
+                .unwrap_or_default();
+
+            let ipc = blender_mcp_ipc::BlenderIpcClient::new(&args.host, args.port);
+            let cmd = serde_json::json!({
+                "type": "rig_game_item",
+                "params": {
+                    "object_name": args.object_name,
+                    "collider_type": args.collider,
+                    "sockets": sockets,
+                }
+            });
+            match ipc.send_command(&cmd).await {
+                Ok(resp) => println!("Rigging response: {}", serde_json::to_string_pretty(&resp)?),
+                Err(e) => eprintln!("Rigging failed: {}", e),
+            }
+        }
+        Some(Commands::Craft(args)) => {
+            let ipc = blender_mcp_ipc::BlenderIpcClient::new(&args.host, args.port);
+            let cmd = serde_json::json!({
+                "type": "craft_hero_prop",
+                "params": {
+                    "archetype": args.archetype,
+                    "output_dir": args.output_dir.display().to_string(),
+                }
+            });
+            match ipc.send_command(&cmd).await {
+                Ok(resp) => println!("Crafting response: {}", serde_json::to_string_pretty(&resp)?),
+                Err(e) => eprintln!("Crafting failed: {}", e),
+            }
+        }
+        Some(Commands::ExportSkills(args)) => {
+            export_agent_skills(&args.dest_dir, &args.format)?;
+        }
         Some(Commands::Client(args)) => {
             match args.action {
                 ClientAction::List { json } => {
@@ -145,6 +281,62 @@ async fn main() -> Result<(), anyhow::Error> {
                 }
             }
         }
+    }
+
+    Ok(())
+}
+
+fn export_agent_skills(dest_dir: &Path, format: &str) -> std::io::Result<()> {
+    let skill_content = r#"---
+name: blender-mcp
+description: High-performance reflective 3D spatial agent runtime for Blender. Use for auditing models, rigging sockets & Rapier3D colliders, packing ORM textures, and crafting game props.
+---
+
+# blender-mcp Instructions
+
+Use the `blender-mcp` MCP server tools:
+1. `audit_asset`: Empirically audit a .glb asset for polycount and material budget.
+2. `rig_game_item`: Auto-place semantic sockets (`SOCKET_grip_primary`, `SOCKET_muzzle`) and generate physics colliders (`UCX_`, `UBX_`, `UCP_`).
+3. `pack_pbr_textures`: Pack AO, Roughness, and Metallic textures into game-ready ORM maps.
+4. `craft_hero_prop`: Procedurally craft hero props conforming to the 7-step Barrel Protocol.
+5. `execute_blender_code`: Execute live Python code in Blender.
+6. `get_scene_info`: Introspect the real-time Blender scene.
+"#;
+
+    if format == "all" || format == "antigravity" {
+        let p = dest_dir.join(".agents/skills/blender-mcp/SKILL.md");
+        if let Some(parent) = p.parent() {
+            std::fs::create_dir_all(parent)?;
+        }
+        std::fs::write(&p, skill_content)?;
+        println!("Exported Antigravity skill: {}", p.display());
+    }
+
+    if format == "all" || format == "cursor" {
+        let p = dest_dir.join(".cursor/rules/blender-mcp.mdc");
+        if let Some(parent) = p.parent() {
+            std::fs::create_dir_all(parent)?;
+        }
+        std::fs::write(&p, skill_content)?;
+        println!("Exported Cursor rule: {}", p.display());
+    }
+
+    if format == "all" || format == "claude" {
+        let p = dest_dir.join(".claude/skills/blender-mcp.md");
+        if let Some(parent) = p.parent() {
+            std::fs::create_dir_all(parent)?;
+        }
+        std::fs::write(&p, skill_content)?;
+        println!("Exported Claude skill: {}", p.display());
+    }
+
+    if format == "all" || format == "gemini" {
+        let p = dest_dir.join(".gemini/skills/blender-mcp.md");
+        if let Some(parent) = p.parent() {
+            std::fs::create_dir_all(parent)?;
+        }
+        std::fs::write(&p, skill_content)?;
+        println!("Exported Gemini skill: {}", p.display());
     }
 
     Ok(())

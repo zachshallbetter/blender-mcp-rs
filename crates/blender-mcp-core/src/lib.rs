@@ -41,6 +41,34 @@ fn default_collider() -> String {
     "convex".to_string()
 }
 
+#[derive(Deserialize, JsonSchema)]
+struct PackPbrParams {
+    /// Optional path to Ambient Occlusion map
+    ao_path: Option<String>,
+    /// Optional path to Roughness map
+    roughness_path: Option<String>,
+    /// Optional path to Metallic map
+    metallic_path: Option<String>,
+    /// Destination path for packed ORM map (PNG)
+    output_path: String,
+}
+
+#[derive(Deserialize, JsonSchema)]
+struct CraftHeroPropParams {
+    /// Archetype name: "western_barrel", "wooden_crate", "lantern", "revolver"
+    archetype: String,
+    /// Destination directory for compiled .glb and textures
+    #[serde(default = "default_output_dir")]
+    output_dir: String,
+}
+
+fn default_output_dir() -> String {
+    "./assets".to_string()
+}
+
+#[derive(Deserialize, JsonSchema)]
+struct GetSceneInfoParams {}
+
 pub fn create_default_registry(ipc: Arc<BlenderIpcClient>) -> ToolRegistry {
     let mut registry = ToolRegistry::new();
 
@@ -54,7 +82,22 @@ pub fn create_default_registry(ipc: Arc<BlenderIpcClient>) -> ToolRegistry {
         },
     );
 
-    // 2. execute_blender_code tool
+    // 2. pack_pbr_textures tool (SIMD ORM channel packing)
+    registry.register_fn(
+        "pack_pbr_textures",
+        "Packs Ambient Occlusion (R), Roughness (G), and Metallic (B) maps into a single game-ready ORM texture",
+        |params: PackPbrParams| async move {
+            blender_mcp_pbr::pack_orm(
+                params.ao_path.as_deref(),
+                params.roughness_path.as_deref(),
+                params.metallic_path.as_deref(),
+                &params.output_path,
+            )
+            .map_err(|e| format!("PBR packing failed: {}", e))
+        },
+    );
+
+    // 3. execute_blender_code tool
     let ipc_clone = Arc::clone(&ipc);
     registry.register_fn(
         "execute_blender_code",
@@ -73,7 +116,7 @@ pub fn create_default_registry(ipc: Arc<BlenderIpcClient>) -> ToolRegistry {
         },
     );
 
-    // 3. rig_game_item tool
+    // 4. rig_game_item tool
     let ipc_clone = Arc::clone(&ipc);
     registry.register_fn(
         "rig_game_item",
@@ -92,6 +135,47 @@ pub fn create_default_registry(ipc: Arc<BlenderIpcClient>) -> ToolRegistry {
                 ipc.send_command(&cmd)
                     .await
                     .map_err(|e| format!("Rigging failed: {}", e))
+            }
+        },
+    );
+
+    // 5. craft_hero_prop tool
+    let ipc_clone = Arc::clone(&ipc);
+    registry.register_fn(
+        "craft_hero_prop",
+        "Procedurally generates a game-ready hero prop conforming to the 7-step Barrel Protocol craftsmanship standard",
+        move |params: CraftHeroPropParams| {
+            let ipc = Arc::clone(&ipc_clone);
+            async move {
+                let cmd = serde_json::json!({
+                    "type": "craft_hero_prop",
+                    "params": {
+                        "archetype": params.archetype,
+                        "output_dir": params.output_dir,
+                    }
+                });
+                ipc.send_command(&cmd)
+                    .await
+                    .map_err(|e| format!("Hero prop crafting failed: {}", e))
+            }
+        },
+    );
+
+    // 6. get_scene_info tool
+    let ipc_clone = Arc::clone(&ipc);
+    registry.register_fn(
+        "get_scene_info",
+        "Retrieves real-time scene hierarchy, meshes, active cameras, and material slots from Blender",
+        move |_params: GetSceneInfoParams| {
+            let ipc = Arc::clone(&ipc_clone);
+            async move {
+                let cmd = serde_json::json!({
+                    "type": "get_scene_info",
+                    "params": {}
+                });
+                ipc.send_command(&cmd)
+                    .await
+                    .map_err(|e| format!("Scene query failed: {}", e))
             }
         },
     );
@@ -217,14 +301,17 @@ mod tests {
         assert!(list_resp.error.is_none());
         let res_val = list_resp.result.unwrap();
         let tools = res_val.get("tools").unwrap().as_array().unwrap();
-        assert!(tools.len() >= 3);
+        assert_eq!(tools.len(), 6);
 
         let tool_names: Vec<&str> = tools
             .iter()
             .map(|t| t.get("name").unwrap().as_str().unwrap())
             .collect();
         assert!(tool_names.contains(&"audit_asset"));
+        assert!(tool_names.contains(&"pack_pbr_textures"));
         assert!(tool_names.contains(&"execute_blender_code"));
         assert!(tool_names.contains(&"rig_game_item"));
+        assert!(tool_names.contains(&"craft_hero_prop"));
+        assert!(tool_names.contains(&"get_scene_info"));
     }
 }

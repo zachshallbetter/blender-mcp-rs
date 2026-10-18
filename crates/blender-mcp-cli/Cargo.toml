@@ -14,6 +14,7 @@ path = "src/main.rs"
 blender-mcp-core = { path = "../blender-mcp-core" }
 blender-mcp-protocol = { path = "../blender-mcp-protocol" }
 blender-mcp-geom = { path = "../blender-mcp-geom" }
+blender-mcp-pbr = { path = "../blender-mcp-pbr" }
 blender-mcp-ipc = { path = "../blender-mcp-ipc" }
 
 tokio.workspace = true
