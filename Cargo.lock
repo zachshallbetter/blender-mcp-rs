@@ -125,7 +125,7 @@ checksum = "3ded4057c258ba199e2d26386d3af3780957ecaee6c4ef4041c6b4b8b97c0b06"
 
 [[package]]
 name = "blender-mcp-cli"
-version = "0.1.0"
+version = "0.3.0"
 dependencies = [
  "anyhow",
  "blender-mcp-core",
@@ -133,6 +133,7 @@ dependencies = [
  "blender-mcp-ipc",
  "blender-mcp-pbr",
  "blender-mcp-protocol",
+ "blender-mcp-synth",
  "clap",
  "serde",
  "serde_json",
@@ -143,7 +144,7 @@ dependencies = [
 
 [[package]]
 name = "blender-mcp-core"
-version = "0.1.0"
+version = "0.3.0"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -152,6 +153,7 @@ dependencies = [
  "blender-mcp-pbr",
  "blender-mcp-protocol",
  "blender-mcp-reflect",
+ "blender-mcp-synth",
  "futures",
  "schemars",
  "serde",
@@ -163,7 +165,7 @@ dependencies = [
 
 [[package]]
 name = "blender-mcp-geom"
-version = "0.1.0"
+version = "0.3.0"
 dependencies = [
  "glam",
  "gltf",
@@ -176,7 +178,7 @@ dependencies = [
 
 [[package]]
 name = "blender-mcp-ipc"
-version = "0.1.0"
+version = "0.3.0"
 dependencies = [
  "async-trait",
  "futures",
@@ -191,7 +193,7 @@ dependencies = [
 
 [[package]]
 name = "blender-mcp-pbr"
-version = "0.1.0"
+version = "0.3.0"
 dependencies = [
  "image",
  "serde",
@@ -202,7 +204,7 @@ dependencies = [
 
 [[package]]
 name = "blender-mcp-protocol"
-version = "0.1.0"
+version = "0.3.0"
 dependencies = [
  "schemars",
  "serde",
@@ -213,7 +215,7 @@ dependencies = [
 
 [[package]]
 name = "blender-mcp-reflect"
-version = "0.1.0"
+version = "0.3.0"
 dependencies = [
  "async-trait",
  "futures",
@@ -222,6 +224,20 @@ dependencies = [
  "serde_json",
  "thiserror 2.0.21",
  "tokio",
+ "tracing",
+]
+
+[[package]]
+name = "blender-mcp-synth"
+version = "0.3.0"
+dependencies = [
+ "blender-mcp-geom",
+ "blender-mcp-pbr",
+ "glam",
+ "schemars",
+ "serde",
+ "serde_json",
+ "thiserror 2.0.21",
  "tracing",
 ]
 

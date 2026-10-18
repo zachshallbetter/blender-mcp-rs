@@ -5,6 +5,29 @@ All notable changes to `blender-mcp-rs` will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html) under the governance of `VERSIONING.md` and `AUTHORITY.md`.
 
+## [0.3.0] - 2026-10-17
+
+### Added
+- **Complete Procedural Synthesis Engine (`blender-mcp-synth`)**:
+  - Desert flora synthesis: Saguaro cactus, Prickly Pear, Yucca, Desert Boulder with quad UV mapping.
+  - Municipal and frontier props: Western barrels, wooden crates, hitching posts, kerosene lanterns.
+  - Spatial Assembly Grammars: Multi-component composition with socket anchoring and Rapier3D collision hulls.
+- **Safe Mode Code Sandbox (`blender-mcp-core::sandbox`)**:
+  - Native token analysis blocking dangerous system calls (`os.system`, `subprocess`, `shutil.rmtree`, socket attacks) while preserving creative `bpy` scripting.
+- **Visual Camera Navigation & Viewport Snapshots**:
+  - Added reflective `look` tool for spherical camera orbit and active object tracking.
+  - Added `render_viewport_snapshot` for high-resolution offscreen image capture.
+- **Automated Blender Addon Lifecycle Manager (`blender-mcp-cli::addon_manager`)**:
+  - Cross-platform detection for all installed Blender versions (4.0, 4.1, 4.2, 5.1, 5.2).
+  - One-command addon installation (`blender-mcp addon install`) and inspection (`blender-mcp addon status`).
+- **Complete 12-Tool Reflective MCP Suite**:
+  - `audit_asset`, `pack_pbr_textures`, `execute_blender_code`, `rig_game_item`, `craft_hero_prop`, `get_scene_info`, `get_scene_csg`, `synthesize_desert_flora`, `synthesize_municipal_prop`, `compose_assembly_grammar`, `look`, `render_viewport_snapshot`.
+
+### Verification Status
+- **Implemented**: All 7 workspace crates (`reflect`, `protocol`, `ipc`, `geom`, `pbr`, `synth`, `core`, `cli`) and companion addon.
+- **Tested**: 17 unit/integration tests passing 100% across workspace with zero clippy warnings.
+- **Empirically Validated**: Tested addon installation into live Blender 5.1/5.2 paths, client configuration detection, and direct CLI command execution.
+
 ## [0.2.0] - 2026-10-17
 
 ### Added

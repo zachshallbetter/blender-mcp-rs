@@ -1,3 +1,5 @@
+pub mod sandbox;
+
 use std::sync::Arc;
 
 use blender_mcp_ipc::BlenderIpcClient;
@@ -12,6 +14,39 @@ pub struct ServerContext {
     pub registry: ToolRegistry,
     pub ipc: Arc<BlenderIpcClient>,
 }
+
+#[derive(Deserialize, JsonSchema)]
+struct LookParams {
+    /// Target object or location name to focus on
+    #[serde(default = "default_focus_target")]
+    target: String,
+    /// Distance from target in meters
+    #[serde(default = "default_camera_distance")]
+    distance: f32,
+    /// Azimuth angle in degrees (0 to 360)
+    #[serde(default = "default_azimuth")]
+    azimuth: f32,
+    /// Elevation angle in degrees (-89 to 89)
+    #[serde(default = "default_elevation")]
+    elevation: f32,
+}
+
+fn default_focus_target() -> String { "active".to_string() }
+fn default_camera_distance() -> f32 { 3.0 }
+fn default_azimuth() -> f32 { 45.0 }
+fn default_elevation() -> f32 { 30.0 }
+
+#[derive(Deserialize, JsonSchema)]
+struct ViewportSnapshotParams {
+    /// Render resolution width
+    #[serde(default = "default_res")]
+    width: u32,
+    /// Render resolution height
+    #[serde(default = "default_res")]
+    height: u32,
+}
+
+fn default_res() -> u32 { 1080 }
 
 #[derive(Deserialize, JsonSchema)]
 struct AuditAssetParams {
@@ -112,10 +147,13 @@ pub fn create_default_registry(ipc: Arc<BlenderIpcClient>) -> ToolRegistry {
     let ipc_clone = Arc::clone(&ipc);
     registry.register_fn(
         "execute_blender_code",
-        "Executes Python code directly inside the live Blender runtime via sub-millisecond IPC",
+        "Executes Python code directly inside the live Blender runtime with sandboxing and sub-millisecond IPC",
         move |params: ExecuteCodeParams| {
             let ipc = Arc::clone(&ipc_clone);
             async move {
+                sandbox::validate_blender_code(&params.code)
+                    .map_err(|e| format!("Safe mode violation: {}", e))?;
+
                 let cmd = serde_json::json!({
                     "type": "execute_code",
                     "params": { "code": params.code }
@@ -252,6 +290,82 @@ pub fn create_default_registry(ipc: Arc<BlenderIpcClient>) -> ToolRegistry {
         },
     );
 
+    // 8. synthesize_desert_flora tool
+    registry.register_fn(
+        "synthesize_desert_flora",
+        "Procedurally synthesizes game-ready desert flora (Saguaro, Prickly Pear, Yucca, Desert Rock) with sockets and colliders",
+        |params: blender_mcp_synth::FloraSynthParams| async move {
+            let res = blender_mcp_synth::synthesize_desert_flora(&params);
+            Ok(res)
+        },
+    );
+
+    // 9. synthesize_municipal_prop tool
+    registry.register_fn(
+        "synthesize_municipal_prop",
+        "Procedurally synthesizes game-ready municipal props (Western Barrel, Wooden Crate, Hitching Post, Lantern)",
+        |params: blender_mcp_synth::PropSynthParams| async move {
+            let res = blender_mcp_synth::synthesize_municipal_prop(&params);
+            Ok(res)
+        },
+    );
+
+    // 10. compose_assembly_grammar tool
+    registry.register_fn(
+        "compose_assembly_grammar",
+        "Composes a multi-component spatial assembly grammar into a game-ready asset with sockets, colliders, and manifest",
+        |grammar: blender_mcp_synth::AssemblyGrammar| async move {
+            let res = blender_mcp_synth::compile_assembly_grammar(&grammar);
+            Ok(res)
+        },
+    );
+
+    // 11. look tool
+    let ipc_clone = Arc::clone(&ipc);
+    registry.register_fn(
+        "look",
+        "Positions and orbits the active 3D camera around a target object with azimuth, elevation, and distance",
+        move |params: LookParams| {
+            let ipc = Arc::clone(&ipc_clone);
+            async move {
+                let cmd = serde_json::json!({
+                    "type": "look",
+                    "params": {
+                        "target": params.target,
+                        "distance": params.distance,
+                        "azimuth": params.azimuth,
+                        "elevation": params.elevation,
+                    }
+                });
+                ipc.send_command(&cmd)
+                    .await
+                    .map_err(|e| format!("Camera navigation failed: {}", e))
+            }
+        },
+    );
+
+    // 12. render_viewport_snapshot tool
+    let ipc_clone = Arc::clone(&ipc);
+    registry.register_fn(
+        "render_viewport_snapshot",
+        "Captures a high-resolution offscreen viewport or active camera snapshot for visual inspection",
+        move |params: ViewportSnapshotParams| {
+            let ipc = Arc::clone(&ipc_clone);
+            async move {
+                let cmd = serde_json::json!({
+                    "type": "render_viewport_snapshot",
+                    "params": {
+                        "width": params.width,
+                        "height": params.height,
+                    }
+                });
+                ipc.send_command(&cmd)
+                    .await
+                    .map_err(|e| format!("Snapshot render failed: {}", e))
+            }
+        },
+    );
+
     registry
 }
 
@@ -373,7 +487,7 @@ mod tests {
         assert!(list_resp.error.is_none());
         let res_val = list_resp.result.unwrap();
         let tools = res_val.get("tools").unwrap().as_array().unwrap();
-        assert_eq!(tools.len(), 7);
+        assert_eq!(tools.len(), 12);
 
         let tool_names: Vec<&str> = tools
             .iter()
@@ -386,5 +500,10 @@ mod tests {
         assert!(tool_names.contains(&"craft_hero_prop"));
         assert!(tool_names.contains(&"get_scene_info"));
         assert!(tool_names.contains(&"get_scene_csg"));
+        assert!(tool_names.contains(&"synthesize_desert_flora"));
+        assert!(tool_names.contains(&"synthesize_municipal_prop"));
+        assert!(tool_names.contains(&"compose_assembly_grammar"));
+        assert!(tool_names.contains(&"look"));
+        assert!(tool_names.contains(&"render_viewport_snapshot"));
     }
 }

@@ -1,5 +1,5 @@
 # blender-mcp-rs: Full Technical Context Corpus
-Version: v0.2.0
+Version: v0.3.0
 Authors: Zachary Shallbetter / SnackStudio
 License: MIT OR Apache-2.0
 
@@ -373,13 +373,14 @@ members = [
     "crates/blender-mcp-ipc",
     "crates/blender-mcp-geom",
     "crates/blender-mcp-pbr",
+    "crates/blender-mcp-synth",
     "crates/blender-mcp-core",
     "crates/blender-mcp-cli",
 ]
 resolver = "2"
 
 [workspace.package]
-version = "0.2.0"
+version = "0.3.0"
 edition = "2021"
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/SnackStudio/blender-mcp-rs"
@@ -436,6 +437,7 @@ blender-mcp-core = { path = "../blender-mcp-core" }
 blender-mcp-protocol = { path = "../blender-mcp-protocol" }
 blender-mcp-geom = { path = "../blender-mcp-geom" }
 blender-mcp-pbr = { path = "../blender-mcp-pbr" }
+blender-mcp-synth = { path = "../blender-mcp-synth" }
 blender-mcp-ipc = { path = "../blender-mcp-ipc" }
 
 tokio.workspace = true
@@ -448,7 +450,244 @@ anyhow.workspace = true
 
 ================================================================================
 
+## CRATE FILE: crates/blender-mcp-cli/src/addon_manager.rs
+
+use std::path::{Path, PathBuf};
+use serde::{Deserialize, Serialize};
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct BlenderInstallation {
+    pub version: String,
+    pub path: PathBuf,
+    pub addon_dir: PathBuf,
+    pub is_addon_installed: bool,
+}
+
+pub fn detect_blender_installations() -> Vec<BlenderInstallation> {
+    let mut installs = Vec::new();
+    let home = std::env::var("HOME").unwrap_or_else(|_| ".".to_string());
+    let home_path = Path::new(&home);
+
+    #[cfg(target_os = "macos")]
+    {
+        let app_support = home_path.join("Library/Application Support/Blender");
+        if app_support.exists() {
+            if let Ok(entries) = std::fs::read_dir(&app_support) {
+                for entry in entries.flatten() {
+                    let path = entry.path();
+                    if path.is_dir() {
+                        let name = entry.file_name().to_string_lossy().to_string();
+                        // Version folder like 4.0, 4.1, 4.2, 4.3, 5.0
+                        if name.chars().next().is_some_and(|c| c.is_ascii_digit()) {
+                            let addon_dir = path.join("scripts/addons/blender_mcp");
+                            let is_installed = addon_dir.join("__init__.py").exists();
+                            installs.push(BlenderInstallation {
+                                version: name,
+                                path: PathBuf::from("/Applications/Blender.app"),
+                                addon_dir,
+                                is_addon_installed: is_installed,
+                            });
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    #[cfg(target_os = "linux")]
+    {
+        let config_blender = home_path.join(".config/blender");
+        if config_blender.exists() {
+            if let Ok(entries) = std::fs::read_dir(&config_blender) {
+                for entry in entries.flatten() {
+                    let path = entry.path();
+                    if path.is_dir() {
+                        let name = entry.file_name().to_string_lossy().to_string();
+                        if name.chars().next().map_or(false, |c| c.is_ascii_digit()) {
+                            let addon_dir = path.join("scripts/addons/blender_mcp");
+                            let is_installed = addon_dir.join("__init__.py").exists();
+                            installs.push(BlenderInstallation {
+                                version: name,
+                                path: PathBuf::from("/usr/bin/blender"),
+                                addon_dir,
+                                is_addon_installed: is_installed,
+                            });
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    installs.sort_by(|a, b| b.version.cmp(&a.version));
+    installs
+}
+
+pub fn install_addon(target_version: Option<&str>) -> Result<Vec<PathBuf>, std::io::Error> {
+    let installs = detect_blender_installations();
+    let mut installed_paths = Vec::new();
+
+    let addon_src = include_str!("../../../addon/blender_mcp/__init__.py");
+
+    for inst in installs {
+        if let Some(v) = target_version {
+            if inst.version != v {
+                continue;
+            }
+        }
+
+        std::fs::create_dir_all(&inst.addon_dir)?;
+        let init_py = inst.addon_dir.join("__init__.py");
+        std::fs::write(&init_py, addon_src)?;
+        installed_paths.push(init_py);
+    }
+
+    Ok(installed_paths)
+}
+
+================================================================================
+
+## CRATE FILE: crates/blender-mcp-cli/src/client_manager.rs
+
+use std::path::{Path, PathBuf};
+use serde::{Deserialize, Serialize};
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ClientInfo {
+    pub name: String,
+    pub client_type: String,
+    pub config_path: PathBuf,
+    pub is_configured: bool,
+}
+
+pub fn get_client_config_path(name: &str, scope: &str) -> PathBuf {
+    let home = std::env::var("HOME").unwrap_or_else(|_| ".".to_string());
+    let home_path = Path::new(&home);
+
+    match (name, scope) {
+        ("claude-code", "project") => PathBuf::from(".mcp.json"),
+        ("claude-code", _) => home_path.join(".claude/mcp.json"),
+        ("claude-desktop", _) => {
+            #[cfg(target_os = "macos")]
+            {
+                home_path.join("Library/Application Support/Claude/claude_desktop_config.json")
+            }
+            #[cfg(not(target_os = "macos"))]
+            {
+                home_path.join(".config/Claude/claude_desktop_config.json")
+            }
+        }
+        ("cursor", "project") => PathBuf::from(".cursor/mcp.json"),
+        ("cursor", _) => home_path.join(".cursor/mcp.json"),
+        ("antigravity", "project") => PathBuf::from(".agents/mcp_config.json"),
+        ("antigravity", _) => home_path.join(".gemini/config/mcp_config.json"),
+        ("codex", _) => home_path.join(".codex/config.toml"),
+        ("gemini", "project") => PathBuf::from(".gemini/mcp_config.json"),
+        ("gemini", _) => home_path.join(".config/gemini/mcp.json"),
+        _ => PathBuf::from(format!(".{}_mcp.json", name)),
+    }
+}
+
+pub fn configure_client(name: &str, scope: &str) -> Result<PathBuf, std::io::Error> {
+    let config_path = get_client_config_path(name, scope);
+
+    if let Some(parent) = config_path.parent() {
+        if !parent.as_os_str().is_empty() {
+            std::fs::create_dir_all(parent)?;
+        }
+    }
+
+    if name == "codex" {
+        let snippet = "\n[mcp_servers.blender]\ncommand = \"blender-mcp\"\nargs = [\"serve\"]\n";
+        let mut content = if config_path.exists() {
+            std::fs::read_to_string(&config_path)?
+        } else {
+            String::new()
+        };
+        if !content.contains("[mcp_servers.blender]") {
+            content.push_str(snippet);
+            std::fs::write(&config_path, content)?;
+        }
+    } else {
+        let mut root: serde_json::Value = if config_path.exists() {
+            let data = std::fs::read_to_string(&config_path)?;
+            serde_json::from_str(&data).unwrap_or(serde_json::json!({}))
+        } else {
+            serde_json::json!({})
+        };
+
+        let server_entry = serde_json::json!({
+            "command": "blender-mcp",
+            "args": ["serve"]
+        });
+
+        let key = "mcpServers";
+
+        if root.get(key).is_none() {
+            root[key] = serde_json::json!({});
+        }
+
+        root[key]["blender"] = server_entry;
+        let formatted = serde_json::to_string_pretty(&root)?;
+        std::fs::write(&config_path, formatted)?;
+    }
+
+    Ok(config_path)
+}
+
+pub fn list_detected_clients() -> Vec<ClientInfo> {
+    let clients = vec![
+        ("claude-code", "cli"),
+        ("claude-desktop", "desktop"),
+        ("cursor", "editor"),
+        ("antigravity", "ide"),
+        ("codex", "cli"),
+        ("gemini", "cli"),
+    ];
+
+    clients
+        .into_iter()
+        .map(|(name, ctype)| {
+            let cfg = get_client_config_path(name, "user");
+            let is_configured = if cfg.exists() {
+                let s = std::fs::read_to_string(&cfg).unwrap_or_default();
+                s.contains("blender-mcp")
+            } else {
+                false
+            };
+            ClientInfo {
+                name: name.to_string(),
+                client_type: ctype.to_string(),
+                config_path: cfg,
+                is_configured,
+            }
+        })
+        .collect()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_client_config_paths() {
+        let p_claude = get_client_config_path("claude-code", "project");
+        assert_eq!(p_claude, PathBuf::from(".mcp.json"));
+
+        let p_cursor = get_client_config_path("cursor", "project");
+        assert_eq!(p_cursor, PathBuf::from(".cursor/mcp.json"));
+
+        let p_anti = get_client_config_path("antigravity", "project");
+        assert_eq!(p_anti, PathBuf::from(".agents/mcp_config.json"));
+    }
+}
+
+================================================================================
+
 ## CRATE FILE: crates/blender-mcp-cli/src/main.rs
+
+pub mod addon_manager;
+pub mod client_manager;
 
 use std::path::{Path, PathBuf};
 use clap::{Args, Parser, Subcommand};
@@ -489,6 +728,9 @@ enum Commands {
 
     /// Extract a formal 3D Compiler Semantic Graph (rr-csg-0.1+3d) from Blender
     Csg(CsgArgs),
+
+    /// Manage companion Blender addon installation and status
+    Addon(AddonArgs),
 }
 
 #[derive(Args)]
@@ -627,6 +869,26 @@ enum ClientAction {
     /// Generate an MCP configuration snippet for a client
     GenerateConfig {
         client: String,
+    },
+}
+
+#[derive(Args)]
+struct AddonArgs {
+    #[command(subcommand)]
+    action: AddonAction,
+}
+
+#[derive(Subcommand)]
+enum AddonAction {
+    /// Detect installed Blender versions and check companion addon status
+    Status {
+        #[arg(long)]
+        json: bool,
+    },
+    /// Install or update the companion addon for detected Blender versions
+    Install {
+        #[arg(long)]
+        blender_version: Option<String>,
     },
 }
 
@@ -776,28 +1038,22 @@ async fn main() -> Result<(), anyhow::Error> {
         Some(Commands::Client(args)) => {
             match args.action {
                 ClientAction::List { json } => {
-                    let clients = serde_json::json!({
-                        "clients": [
-                            { "name": "claude-code", "supported": true, "type": "cli" },
-                            { "name": "antigravity", "supported": true, "type": "ide" },
-                            { "name": "cursor", "supported": true, "type": "editor" },
-                            { "name": "codex", "supported": true, "type": "cli" },
-                            { "name": "gemini", "supported": true, "type": "cli" }
-                        ]
-                    });
+                    let clients = client_manager::list_detected_clients();
                     if json {
                         println!("{}", serde_json::to_string_pretty(&clients)?);
                     } else {
-                        println!("Supported MCP Agent Clients:");
-                        println!("  • claude-code   (Claude Code CLI)");
-                        println!("  • antigravity   (Google Antigravity IDE)");
-                        println!("  • cursor        (Cursor Editor)");
-                        println!("  • codex         (OpenAI Codex / ChatGPT)");
-                        println!("  • gemini        (Gemini CLI)");
+                        println!("Supported & Detected MCP Agent Clients:");
+                        for c in &clients {
+                            let status = if c.is_configured { "configured ✅" } else { "not configured" };
+                            println!("  • {:<15} ({}) - {} [{}]", c.name, c.client_type, c.config_path.display(), status);
+                        }
                     }
                 }
                 ClientAction::Add { client, scope } => {
-                    println!("Configured '{}' (scope: {}) for blender-mcp-rs.", client, scope);
+                    match client_manager::configure_client(&client, &scope) {
+                        Ok(p) => println!("Successfully configured '{}' (scope: {}) at: {}", client, scope, p.display()),
+                        Err(e) => eprintln!("Failed to configure '{}': {}", client, e),
+                    }
                 }
                 ClientAction::GenerateConfig { client } => {
                     if client == "codex" {
@@ -812,6 +1068,40 @@ async fn main() -> Result<(), anyhow::Error> {
                             }
                         });
                         println!("{}", serde_json::to_string_pretty(&config)?);
+                    }
+                }
+            }
+        }
+        Some(Commands::Addon(args)) => {
+            match args.action {
+                AddonAction::Status { json } => {
+                    let installs = addon_manager::detect_blender_installations();
+                    if json {
+                        println!("{}", serde_json::to_string_pretty(&installs)?);
+                    } else {
+                        println!("Detected Blender Installations & Addon Status:");
+                        if installs.is_empty() {
+                            println!("  No installed Blender version directories detected.");
+                        }
+                        for inst in &installs {
+                            let st = if inst.is_addon_installed { "INSTALLED ✅" } else { "NOT INSTALLED ❌" };
+                            println!("  • Blender {:<4} | Addon: {:<17} | Path: {}", inst.version, st, inst.addon_dir.display());
+                        }
+                    }
+                }
+                AddonAction::Install { blender_version } => {
+                    match addon_manager::install_addon(blender_version.as_deref()) {
+                        Ok(paths) => {
+                            if paths.is_empty() {
+                                println!("No matching Blender installation found to install addon.");
+                            } else {
+                                println!("Successfully installed blender-mcp-rs companion addon:");
+                                for p in paths {
+                                    println!("  ✅ {}", p.display());
+                                }
+                            }
+                        }
+                        Err(e) => eprintln!("Failed to install addon: {}", e),
                     }
                 }
             }
@@ -895,6 +1185,7 @@ blender-mcp-protocol = { path = "../blender-mcp-protocol" }
 blender-mcp-ipc = { path = "../blender-mcp-ipc" }
 blender-mcp-geom = { path = "../blender-mcp-geom" }
 blender-mcp-pbr = { path = "../blender-mcp-pbr" }
+blender-mcp-synth = { path = "../blender-mcp-synth" }
 
 tokio.workspace = true
 serde.workspace = true
@@ -910,6 +1201,8 @@ futures.workspace = true
 
 ## CRATE FILE: crates/blender-mcp-core/src/lib.rs
 
+pub mod sandbox;
+
 use std::sync::Arc;
 
 use blender_mcp_ipc::BlenderIpcClient;
@@ -924,6 +1217,39 @@ pub struct ServerContext {
     pub registry: ToolRegistry,
     pub ipc: Arc<BlenderIpcClient>,
 }
+
+#[derive(Deserialize, JsonSchema)]
+struct LookParams {
+    /// Target object or location name to focus on
+    #[serde(default = "default_focus_target")]
+    target: String,
+    /// Distance from target in meters
+    #[serde(default = "default_camera_distance")]
+    distance: f32,
+    /// Azimuth angle in degrees (0 to 360)
+    #[serde(default = "default_azimuth")]
+    azimuth: f32,
+    /// Elevation angle in degrees (-89 to 89)
+    #[serde(default = "default_elevation")]
+    elevation: f32,
+}
+
+fn default_focus_target() -> String { "active".to_string() }
+fn default_camera_distance() -> f32 { 3.0 }
+fn default_azimuth() -> f32 { 45.0 }
+fn default_elevation() -> f32 { 30.0 }
+
+#[derive(Deserialize, JsonSchema)]
+struct ViewportSnapshotParams {
+    /// Render resolution width
+    #[serde(default = "default_res")]
+    width: u32,
+    /// Render resolution height
+    #[serde(default = "default_res")]
+    height: u32,
+}
+
+fn default_res() -> u32 { 1080 }
 
 #[derive(Deserialize, JsonSchema)]
 struct AuditAssetParams {
@@ -1024,10 +1350,13 @@ pub fn create_default_registry(ipc: Arc<BlenderIpcClient>) -> ToolRegistry {
     let ipc_clone = Arc::clone(&ipc);
     registry.register_fn(
         "execute_blender_code",
-        "Executes Python code directly inside the live Blender runtime via sub-millisecond IPC",
+        "Executes Python code directly inside the live Blender runtime with sandboxing and sub-millisecond IPC",
         move |params: ExecuteCodeParams| {
             let ipc = Arc::clone(&ipc_clone);
             async move {
+                sandbox::validate_blender_code(&params.code)
+                    .map_err(|e| format!("Safe mode violation: {}", e))?;
+
                 let cmd = serde_json::json!({
                     "type": "execute_code",
                     "params": { "code": params.code }
@@ -1164,6 +1493,82 @@ pub fn create_default_registry(ipc: Arc<BlenderIpcClient>) -> ToolRegistry {
         },
     );
 
+    // 8. synthesize_desert_flora tool
+    registry.register_fn(
+        "synthesize_desert_flora",
+        "Procedurally synthesizes game-ready desert flora (Saguaro, Prickly Pear, Yucca, Desert Rock) with sockets and colliders",
+        |params: blender_mcp_synth::FloraSynthParams| async move {
+            let res = blender_mcp_synth::synthesize_desert_flora(&params);
+            Ok(res)
+        },
+    );
+
+    // 9. synthesize_municipal_prop tool
+    registry.register_fn(
+        "synthesize_municipal_prop",
+        "Procedurally synthesizes game-ready municipal props (Western Barrel, Wooden Crate, Hitching Post, Lantern)",
+        |params: blender_mcp_synth::PropSynthParams| async move {
+            let res = blender_mcp_synth::synthesize_municipal_prop(&params);
+            Ok(res)
+        },
+    );
+
+    // 10. compose_assembly_grammar tool
+    registry.register_fn(
+        "compose_assembly_grammar",
+        "Composes a multi-component spatial assembly grammar into a game-ready asset with sockets, colliders, and manifest",
+        |grammar: blender_mcp_synth::AssemblyGrammar| async move {
+            let res = blender_mcp_synth::compile_assembly_grammar(&grammar);
+            Ok(res)
+        },
+    );
+
+    // 11. look tool
+    let ipc_clone = Arc::clone(&ipc);
+    registry.register_fn(
+        "look",
+        "Positions and orbits the active 3D camera around a target object with azimuth, elevation, and distance",
+        move |params: LookParams| {
+            let ipc = Arc::clone(&ipc_clone);
+            async move {
+                let cmd = serde_json::json!({
+                    "type": "look",
+                    "params": {
+                        "target": params.target,
+                        "distance": params.distance,
+                        "azimuth": params.azimuth,
+                        "elevation": params.elevation,
+                    }
+                });
+                ipc.send_command(&cmd)
+                    .await
+                    .map_err(|e| format!("Camera navigation failed: {}", e))
+            }
+        },
+    );
+
+    // 12. render_viewport_snapshot tool
+    let ipc_clone = Arc::clone(&ipc);
+    registry.register_fn(
+        "render_viewport_snapshot",
+        "Captures a high-resolution offscreen viewport or active camera snapshot for visual inspection",
+        move |params: ViewportSnapshotParams| {
+            let ipc = Arc::clone(&ipc_clone);
+            async move {
+                let cmd = serde_json::json!({
+                    "type": "render_viewport_snapshot",
+                    "params": {
+                        "width": params.width,
+                        "height": params.height,
+                    }
+                });
+                ipc.send_command(&cmd)
+                    .await
+                    .map_err(|e| format!("Snapshot render failed: {}", e))
+            }
+        },
+    );
+
     registry
 }
 
@@ -1285,7 +1690,7 @@ mod tests {
         assert!(list_resp.error.is_none());
         let res_val = list_resp.result.unwrap();
         let tools = res_val.get("tools").unwrap().as_array().unwrap();
-        assert_eq!(tools.len(), 7);
+        assert_eq!(tools.len(), 12);
 
         let tool_names: Vec<&str> = tools
             .iter()
@@ -1298,6 +1703,72 @@ mod tests {
         assert!(tool_names.contains(&"craft_hero_prop"));
         assert!(tool_names.contains(&"get_scene_info"));
         assert!(tool_names.contains(&"get_scene_csg"));
+        assert!(tool_names.contains(&"synthesize_desert_flora"));
+        assert!(tool_names.contains(&"synthesize_municipal_prop"));
+        assert!(tool_names.contains(&"compose_assembly_grammar"));
+        assert!(tool_names.contains(&"look"));
+        assert!(tool_names.contains(&"render_viewport_snapshot"));
+    }
+}
+
+================================================================================
+
+## CRATE FILE: crates/blender-mcp-core/src/sandbox.rs
+
+use thiserror::Error;
+
+#[derive(Error, Debug)]
+pub enum SandboxError {
+    #[error("Execution blocked by safe mode sandbox: dangerous pattern '{pattern}' detected in Python script")]
+    ForbiddenPattern { pattern: &'static str },
+}
+
+const FORBIDDEN_PATTERNS: &[&str] = &[
+    "os.system",
+    "os.popen",
+    "subprocess.",
+    "shutil.rmtree",
+    "socket.socket",
+    "eval(",
+    "exec(",
+    "__import__",
+    "import ctypes",
+    "from ctypes",
+    "pty.spawn",
+    "os.remove",
+    "os.unlink",
+];
+
+/// Inspects Python code before sending to live Blender instance.
+pub fn validate_blender_code(code: &str) -> Result<(), SandboxError> {
+    for &pattern in FORBIDDEN_PATTERNS {
+        if code.contains(pattern) {
+            return Err(SandboxError::ForbiddenPattern { pattern });
+        }
+    }
+    Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_valid_blender_code() {
+        let code = r#"
+import bpy
+bpy.ops.mesh.primitive_cube_add(size=2.0)
+cube = bpy.context.active_object
+cube.name = "MyCube"
+"#;
+        assert!(validate_blender_code(code).is_ok());
+    }
+
+    #[test]
+    fn test_forbidden_code_blocked() {
+        let dangerous = "import os; os.system('rm -rf /')";
+        let err = validate_blender_code(dangerous);
+        assert!(err.is_err());
     }
 }
 
@@ -2731,6 +3202,730 @@ mod tests {
             .unwrap();
 
         assert_eq!(result, serde_json::json!({ "sum": 12 }));
+    }
+}
+
+================================================================================
+
+## CRATE FILE: crates/blender-mcp-synth/Cargo.toml
+
+[package]
+name = "blender-mcp-synth"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+description = "Procedural asset synthesis engine: desert flora, municipal props, and assembly grammars for blender-mcp-rs"
+
+[dependencies]
+blender-mcp-geom = { path = "../blender-mcp-geom" }
+blender-mcp-pbr = { path = "../blender-mcp-pbr" }
+
+glam.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+schemars.workspace = true
+thiserror.workspace = true
+tracing.workspace = true
+
+================================================================================
+
+## CRATE FILE: crates/blender-mcp-synth/src/flora.rs
+
+use std::f32::consts::PI;
+use schemars::JsonSchema;
+use serde::{Deserialize, Serialize};
+use crate::mesh::ProceduralMesh;
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum DesertFloraType {
+    Saguaro,
+    PricklyPear,
+    Yucca,
+    DesertRock,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+pub struct FloraSynthParams {
+    pub flora_type: DesertFloraType,
+    #[serde(default = "default_height")]
+    pub height: f32,
+    #[serde(default = "default_arm_count")]
+    pub arm_count: u32,
+    #[serde(default = "default_seed")]
+    pub seed: u64,
+}
+
+fn default_height() -> f32 { 3.5 }
+fn default_arm_count() -> u32 { 2 }
+fn default_seed() -> u64 { 42 }
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SynthesizedFlora {
+    pub flora_type: DesertFloraType,
+    pub mesh: ProceduralMesh,
+    pub sockets: Vec<String>,
+    pub collider_type: blender_mcp_geom::ColliderType,
+}
+
+pub fn synthesize_desert_flora(params: &FloraSynthParams) -> SynthesizedFlora {
+    match params.flora_type {
+        DesertFloraType::Saguaro => synthesize_saguaro(params),
+        DesertFloraType::PricklyPear => synthesize_prickly_pear(params),
+        DesertFloraType::Yucca => synthesize_yucca(params),
+        DesertFloraType::DesertRock => synthesize_desert_rock(params),
+    }
+}
+
+fn synthesize_saguaro(params: &FloraSynthParams) -> SynthesizedFlora {
+    let mut mesh = ProceduralMesh::new("Desert_Flora_Saguaro", "M_Cactus_Ribbed");
+    let ribs = 16;
+    let segments = 24;
+    let radius = 0.35;
+    let height = params.height;
+
+    // Generate fluted cylindrical trunk with vertical ribs
+    for s in 0..=segments {
+        let v = s as f32 / segments as f32;
+        let y = v * height;
+        // Natural fluting and taper towards top
+        let taper = if v > 0.85 {
+            1.0 - (v - 0.85) / 0.15 * 0.4
+        } else {
+            1.0
+        };
+
+        for r in 0..ribs {
+            let u = r as f32 / ribs as f32;
+            let angle = u * 2.0 * PI;
+            // High-frequency fluting along ribs
+            let rib_indent = 1.0 + 0.12 * (angle * (ribs as f32 * 0.5)).cos();
+            let current_radius = radius * taper * rib_indent;
+
+            let x = angle.cos() * current_radius;
+            let z = angle.sin() * current_radius;
+
+            mesh.vertices.push([x, y, z]);
+            mesh.normals.push([angle.cos(), 0.0, angle.sin()]);
+            mesh.uvs.push([u, v]);
+        }
+    }
+
+    // Connect quad grid
+    for s in 0..segments {
+        for r in 0..ribs {
+            let next_r = (r + 1) % ribs;
+            let idx0 = s * ribs + r;
+            let idx1 = s * ribs + next_r;
+            let idx2 = (s + 1) * ribs + next_r;
+            let idx3 = (s + 1) * ribs + r;
+
+            mesh.indices.push([idx0 as u32, idx1 as u32, idx2 as u32]);
+            mesh.indices.push([idx0 as u32, idx2 as u32, idx3 as u32]);
+        }
+    }
+
+    let mut sockets = vec!["SOCKET_root".to_string(), "SOCKET_crown".to_string()];
+    for a in 0..params.arm_count {
+        sockets.push(format!("SOCKET_arm_{:02}", a + 1));
+    }
+
+    SynthesizedFlora {
+        flora_type: DesertFloraType::Saguaro,
+        mesh,
+        sockets,
+        collider_type: blender_mcp_geom::ColliderType::Capsule,
+    }
+}
+
+fn synthesize_prickly_pear(_params: &FloraSynthParams) -> SynthesizedFlora {
+    let mut mesh = ProceduralMesh::new("Desert_Flora_PricklyPear", "M_Cactus_Pad");
+    // Generate flattened oval pads
+    let segments = 16;
+    for i in 0..segments {
+        let u = i as f32 / segments as f32;
+        let angle = u * 2.0 * PI;
+        let x = angle.cos() * 0.4;
+        let y = (angle.sin() + 1.0) * 0.5;
+        let z = 0.08 * (u * PI).sin();
+        mesh.vertices.push([x, y, z]);
+        mesh.normals.push([0.0, 0.0, 1.0]);
+        mesh.uvs.push([u, 0.5]);
+    }
+
+    SynthesizedFlora {
+        flora_type: DesertFloraType::PricklyPear,
+        mesh,
+        sockets: vec!["SOCKET_root".to_string(), "SOCKET_flower".to_string()],
+        collider_type: blender_mcp_geom::ColliderType::Convex,
+    }
+}
+
+fn synthesize_yucca(_params: &FloraSynthParams) -> SynthesizedFlora {
+    let mut mesh = ProceduralMesh::new("Desert_Flora_Yucca", "M_Yucca_Blade");
+    // Radial rosette of sharp dagger-like leaves
+    let blades = 24;
+    for b in 0..blades {
+        let angle = (b as f32 / blades as f32) * 2.0 * PI;
+        let tip_x = angle.cos() * 0.8;
+        let tip_y = 0.6;
+        let tip_z = angle.sin() * 0.8;
+
+        let base_idx = mesh.vertices.len() as u32;
+        mesh.vertices.push([0.0, 0.1, 0.0]);
+        mesh.vertices.push([tip_x, tip_y, tip_z]);
+        mesh.vertices.push([angle.cos() * 0.05, 0.0, angle.sin() * 0.05]);
+
+        mesh.normals.push([0.0, 1.0, 0.0]);
+        mesh.normals.push([angle.cos(), 0.5, angle.sin()]);
+        mesh.normals.push([0.0, 1.0, 0.0]);
+
+        mesh.uvs.push([0.0, 0.0]);
+        mesh.uvs.push([0.5, 1.0]);
+        mesh.uvs.push([1.0, 0.0]);
+
+        mesh.indices.push([base_idx, base_idx + 1, base_idx + 2]);
+    }
+
+    SynthesizedFlora {
+        flora_type: DesertFloraType::Yucca,
+        mesh,
+        sockets: vec!["SOCKET_root".to_string(), "SOCKET_flower_stalk".to_string()],
+        collider_type: blender_mcp_geom::ColliderType::Convex,
+    }
+}
+
+fn synthesize_desert_rock(_params: &FloraSynthParams) -> SynthesizedFlora {
+    let mut mesh = ProceduralMesh::new("Desert_Rock_Boulder", "M_Desert_Stone");
+    // Faceted low-poly weathered rock
+    let vertices = vec![
+        [-0.6, 0.0, -0.5],
+        [0.7, 0.0, -0.4],
+        [0.5, 0.0, 0.6],
+        [-0.5, 0.0, 0.5],
+        [-0.4, 0.8, -0.3],
+        [0.4, 0.7, -0.2],
+        [0.3, 0.9, 0.4],
+        [-0.3, 0.7, 0.3],
+    ];
+
+    for v in &vertices {
+        mesh.vertices.push(*v);
+        mesh.normals.push([v[0], 0.5, v[2]]);
+        mesh.uvs.push([v[0] + 0.5, v[2] + 0.5]);
+    }
+
+    let indices = vec![
+        [0, 1, 5], [0, 5, 4],
+        [1, 2, 6], [1, 6, 5],
+        [2, 3, 7], [2, 7, 6],
+        [3, 0, 4], [3, 4, 7],
+        [4, 5, 6], [4, 6, 7],
+    ];
+    mesh.indices = indices;
+
+    SynthesizedFlora {
+        flora_type: DesertFloraType::DesertRock,
+        mesh,
+        sockets: vec!["SOCKET_ground".to_string()],
+        collider_type: blender_mcp_geom::ColliderType::Convex,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_saguaro_synthesis() {
+        let params = FloraSynthParams {
+            flora_type: DesertFloraType::Saguaro,
+            height: 4.0,
+            arm_count: 3,
+            seed: 1234,
+        };
+        let flora = synthesize_desert_flora(&params);
+        assert_eq!(flora.flora_type, DesertFloraType::Saguaro);
+        assert!(flora.mesh.vertex_count() > 100);
+        assert!(flora.mesh.triangle_count() > 100);
+        assert_eq!(flora.sockets.len(), 5); // root + crown + 3 arms
+        assert_eq!(flora.collider_type, blender_mcp_geom::ColliderType::Capsule);
+    }
+}
+
+================================================================================
+
+## CRATE FILE: crates/blender-mcp-synth/src/grammar.rs
+
+use schemars::JsonSchema;
+use serde::{Deserialize, Serialize};
+
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+pub struct AssemblySocket {
+    pub name: String,
+    pub position: [f32; 3],
+    pub rotation: [f32; 3],
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+pub struct AssemblyComponent {
+    pub name: String,
+    pub component_type: String, // "barrel", "crate", "flora", "mesh"
+    pub position: [f32; 3],
+    pub scale: [f32; 3],
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+pub struct AssemblyGrammar {
+    pub root_name: String,
+    pub components: Vec<AssemblyComponent>,
+    pub sockets: Vec<AssemblySocket>,
+    #[serde(default = "default_collider_type")]
+    pub collider_type: String,
+}
+
+fn default_collider_type() -> String {
+    "convex".to_string()
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CompiledAssembly {
+    pub root_name: String,
+    pub total_vertices: usize,
+    pub total_triangles: usize,
+    pub component_count: usize,
+    pub sockets: Vec<String>,
+    pub collider_node: String,
+    pub manifest: blender_mcp_geom::GameAssetManifest,
+}
+
+pub fn compile_assembly_grammar(grammar: &AssemblyGrammar) -> CompiledAssembly {
+    let mut total_vertices = 0;
+    let mut total_triangles = 0;
+
+    for comp in &grammar.components {
+        match comp.component_type.as_str() {
+            "barrel" => {
+                let p = crate::props::synthesize_municipal_prop(&crate::props::PropSynthParams {
+                    prop_type: crate::props::MunicipalPropType::WesternBarrel,
+                    scale: comp.scale[0],
+                    distress: 0.1,
+                });
+                total_vertices += p.mesh.vertex_count();
+                total_triangles += p.mesh.triangle_count();
+            }
+            "crate" => {
+                let p = crate::props::synthesize_municipal_prop(&crate::props::PropSynthParams {
+                    prop_type: crate::props::MunicipalPropType::WoodenCrate,
+                    scale: comp.scale[0],
+                    distress: 0.0,
+                });
+                total_vertices += p.mesh.vertex_count();
+                total_triangles += p.mesh.triangle_count();
+            }
+            _ => {
+                total_vertices += 24;
+                total_triangles += 12;
+            }
+        }
+    }
+
+    let socket_names: Vec<String> = grammar.sockets.iter().map(|s| s.name.clone()).collect();
+    let prefix = if grammar.collider_type == "box" {
+        "UBX_"
+    } else if grammar.collider_type == "capsule" {
+        "UCP_"
+    } else {
+        "UCX_"
+    };
+    let collider_node = format!("{}{}_01", prefix, grammar.root_name);
+
+    let manifest = blender_mcp_geom::GameAssetManifest {
+        name: grammar.root_name.clone(),
+        version: "0.1.0".to_string(),
+        triangle_count: total_triangles,
+        vertex_count: total_vertices,
+        material_slots: 1,
+        dimensions: [1.0, 1.0, 1.0],
+        colliders: vec![collider_node.clone()],
+        sockets: socket_names.clone(),
+        lod_levels: vec!["LOD0".to_string(), "LOD1".to_string()],
+    };
+
+    CompiledAssembly {
+        root_name: grammar.root_name.clone(),
+        total_vertices,
+        total_triangles,
+        component_count: grammar.components.len(),
+        sockets: socket_names,
+        collider_node,
+        manifest,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_compile_assembly_grammar() {
+        let grammar = AssemblyGrammar {
+            root_name: "Saloon_Entrance_Diorama".to_string(),
+            components: vec![
+                AssemblyComponent {
+                    name: "Stave_Barrel".to_string(),
+                    component_type: "barrel".to_string(),
+                    position: [0.0, 0.0, 0.0],
+                    scale: [1.0, 1.0, 1.0],
+                },
+                AssemblyComponent {
+                    name: "Ammo_Crate".to_string(),
+                    component_type: "crate".to_string(),
+                    position: [0.5, 0.0, 0.0],
+                    scale: [0.5, 0.5, 0.5],
+                },
+            ],
+            sockets: vec![
+                AssemblySocket {
+                    name: "SOCKET_hitch_ring".to_string(),
+                    position: [0.0, 1.0, 0.0],
+                    rotation: [0.0, 0.0, 0.0],
+                },
+            ],
+            collider_type: "convex".to_string(),
+        };
+
+        let compiled = compile_assembly_grammar(&grammar);
+        assert_eq!(compiled.root_name, "Saloon_Entrance_Diorama");
+        assert_eq!(compiled.component_count, 2);
+        assert!(compiled.total_triangles > 100);
+        assert_eq!(compiled.sockets, vec!["SOCKET_hitch_ring"]);
+        assert_eq!(compiled.collider_node, "UCX_Saloon_Entrance_Diorama_01");
+        assert_eq!(compiled.manifest.material_slots, 1);
+    }
+}
+
+================================================================================
+
+## CRATE FILE: crates/blender-mcp-synth/src/lib.rs
+
+pub mod mesh;
+pub mod flora;
+pub mod props;
+pub mod grammar;
+
+pub use mesh::*;
+pub use flora::*;
+pub use props::*;
+pub use grammar::*;
+
+================================================================================
+
+## CRATE FILE: crates/blender-mcp-synth/src/mesh.rs
+
+use serde::{Deserialize, Serialize};
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ProceduralMesh {
+    pub name: String,
+    pub vertices: Vec<[f32; 3]>,
+    pub normals: Vec<[f32; 3]>,
+    pub uvs: Vec<[f32; 2]>,
+    pub indices: Vec<[u32; 3]>,
+    pub material_name: String,
+}
+
+impl ProceduralMesh {
+    pub fn new(name: impl Into<String>, material_name: impl Into<String>) -> Self {
+        Self {
+            name: name.into(),
+            vertices: Vec::new(),
+            normals: Vec::new(),
+            uvs: Vec::new(),
+            indices: Vec::new(),
+            material_name: material_name.into(),
+        }
+    }
+
+    pub fn vertex_count(&self) -> usize {
+        self.vertices.len()
+    }
+
+    pub fn triangle_count(&self) -> usize {
+        self.indices.len()
+    }
+
+    pub fn bounds(&self) -> ([f32; 3], [f32; 3]) {
+        let mut min = [f32::INFINITY; 3];
+        let mut max = [f32::NEG_INFINITY; 3];
+
+        for v in &self.vertices {
+            for i in 0..3 {
+                if v[i] < min[i] {
+                    min[i] = v[i];
+                }
+                if v[i] > max[i] {
+                    max[i] = v[i];
+                }
+            }
+        }
+
+        if self.vertices.is_empty() {
+            ([0.0; 3], [0.0; 3])
+        } else {
+            (min, max)
+        }
+    }
+
+    pub fn dimensions(&self) -> [f32; 3] {
+        let (min, max) = self.bounds();
+        [
+            (max[0] - min[0]).abs(),
+            (max[1] - min[1]).abs(),
+            (max[2] - min[2]).abs(),
+        ]
+    }
+}
+
+================================================================================
+
+## CRATE FILE: crates/blender-mcp-synth/src/props.rs
+
+use std::f32::consts::PI;
+use schemars::JsonSchema;
+use serde::{Deserialize, Serialize};
+use crate::mesh::ProceduralMesh;
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum MunicipalPropType {
+    WesternBarrel,
+    WoodenCrate,
+    HitchingPost,
+    Lantern,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+pub struct PropSynthParams {
+    pub prop_type: MunicipalPropType,
+    #[serde(default = "default_scale")]
+    pub scale: f32,
+    #[serde(default = "default_distress")]
+    pub distress: f32,
+}
+
+fn default_scale() -> f32 { 1.0 }
+fn default_distress() -> f32 { 0.1 }
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SynthesizedProp {
+    pub prop_type: MunicipalPropType,
+    pub mesh: ProceduralMesh,
+    pub sockets: Vec<String>,
+    pub collider_type: blender_mcp_geom::ColliderType,
+}
+
+pub fn synthesize_municipal_prop(params: &PropSynthParams) -> SynthesizedProp {
+    match params.prop_type {
+        MunicipalPropType::WesternBarrel => synthesize_barrel(params),
+        MunicipalPropType::WoodenCrate => synthesize_crate(params),
+        MunicipalPropType::HitchingPost => synthesize_hitching_post(params),
+        MunicipalPropType::Lantern => synthesize_lantern(params),
+    }
+}
+
+fn synthesize_barrel(params: &PropSynthParams) -> SynthesizedProp {
+    let mut mesh = ProceduralMesh::new("Western_Barrel_Master", "M_Western_Wood");
+    let staves = 16;
+    let rings = 8;
+    let height = 1.0 * params.scale;
+    let base_radius = 0.38 * params.scale;
+    let belly_radius = 0.46 * params.scale;
+
+    for r in 0..=rings {
+        let v = r as f32 / rings as f32;
+        let y = (v - 0.5) * height;
+        // Parabolic stave bulge (barrel curvature)
+        let bulge = 1.0 - 4.0 * (v - 0.5) * (v - 0.5);
+        let current_radius = base_radius + (belly_radius - base_radius) * bulge;
+
+        for s in 0..staves {
+            let u = s as f32 / staves as f32;
+            let angle = u * 2.0 * PI;
+            let x = angle.cos() * current_radius;
+            let z = angle.sin() * current_radius;
+
+            mesh.vertices.push([x, y, z]);
+            mesh.normals.push([angle.cos(), 0.1 * (v - 0.5), angle.sin()]);
+            mesh.uvs.push([u, v]);
+        }
+    }
+
+    for r in 0..rings {
+        for s in 0..staves {
+            let next_s = (s + 1) % staves;
+            let idx0 = r * staves + s;
+            let idx1 = r * staves + next_s;
+            let idx2 = (r + 1) * staves + next_s;
+            let idx3 = (r + 1) * staves + s;
+
+            mesh.indices.push([idx0 as u32, idx1 as u32, idx2 as u32]);
+            mesh.indices.push([idx0 as u32, idx2 as u32, idx3 as u32]);
+        }
+    }
+
+    SynthesizedProp {
+        prop_type: MunicipalPropType::WesternBarrel,
+        mesh,
+        sockets: vec![
+            "SOCKET_grip_primary".to_string(),
+            "SOCKET_grip_secondary".to_string(),
+            "SOCKET_bung_hole".to_string(),
+        ],
+        collider_type: blender_mcp_geom::ColliderType::Capsule,
+    }
+}
+
+fn synthesize_crate(params: &PropSynthParams) -> SynthesizedProp {
+    let mut mesh = ProceduralMesh::new("Frontier_Crate_Master", "M_Crate_Wood");
+    let size = 0.8 * params.scale;
+    let h = size * 0.5;
+
+    let corners = [
+        [-h, -h, -h], [h, -h, -h], [h, h, -h], [-h, h, -h],
+        [-h, -h,  h], [h, -h,  h], [h, h,  h], [-h, h,  h],
+    ];
+
+    for c in &corners {
+        mesh.vertices.push(*c);
+        mesh.normals.push([c[0], c[1], c[2]]);
+        mesh.uvs.push([c[0] + 0.5, c[1] + 0.5]);
+    }
+
+    let indices = [
+        // Front
+        [0, 1, 2], [0, 2, 3],
+        // Back
+        [5, 4, 7], [5, 7, 6],
+        // Top
+        [3, 2, 6], [3, 6, 7],
+        // Bottom
+        [4, 5, 1], [4, 1, 0],
+        // Right
+        [1, 5, 6], [1, 6, 2],
+        // Left
+        [4, 0, 3], [4, 3, 7],
+    ];
+    mesh.indices.extend_from_slice(&indices);
+
+    SynthesizedProp {
+        prop_type: MunicipalPropType::WoodenCrate,
+        mesh,
+        sockets: vec![
+            "SOCKET_mount_top".to_string(),
+            "SOCKET_ground".to_string(),
+        ],
+        collider_type: blender_mcp_geom::ColliderType::Box,
+    }
+}
+
+fn synthesize_hitching_post(params: &PropSynthParams) -> SynthesizedProp {
+    let mut mesh = ProceduralMesh::new("Saloon_Hitching_Post", "M_Weathered_Wood");
+    let h = 1.2 * params.scale;
+    let r = 0.12 * params.scale;
+    let segments = 8;
+
+    for y_step in [0.0, h] {
+        for s in 0..segments {
+            let u = s as f32 / segments as f32;
+            let angle = u * 2.0 * PI;
+            let x = angle.cos() * r;
+            let z = angle.sin() * r;
+            mesh.vertices.push([x, y_step, z]);
+            mesh.normals.push([angle.cos(), 0.0, angle.sin()]);
+            mesh.uvs.push([u, y_step / h]);
+        }
+    }
+
+    for s in 0..segments {
+        let next_s = (s + 1) % segments;
+        let idx0 = s;
+        let idx1 = next_s;
+        let idx2 = segments + next_s;
+        let idx3 = segments + s;
+        mesh.indices.push([idx0 as u32, idx1 as u32, idx2 as u32]);
+        mesh.indices.push([idx0 as u32, idx2 as u32, idx3 as u32]);
+    }
+
+    SynthesizedProp {
+        prop_type: MunicipalPropType::HitchingPost,
+        mesh,
+        sockets: vec![
+            "SOCKET_hitch_ring".to_string(),
+            "SOCKET_ground".to_string(),
+        ],
+        collider_type: blender_mcp_geom::ColliderType::Capsule,
+    }
+}
+
+fn synthesize_lantern(params: &PropSynthParams) -> SynthesizedProp {
+    let mut mesh = ProceduralMesh::new("Kerosene_Lantern", "M_Lantern_Metal");
+    let h = 0.45 * params.scale;
+    let r = 0.14 * params.scale;
+    let segments = 12;
+
+    for y_step in [0.0, h * 0.3, h * 0.7, h] {
+        for s in 0..segments {
+            let u = s as f32 / segments as f32;
+            let angle = u * 2.0 * PI;
+            let current_r = if y_step > h * 0.3 && y_step < h * 0.7 { r * 1.2 } else { r };
+            mesh.vertices.push([angle.cos() * current_r, y_step, angle.sin() * current_r]);
+            mesh.normals.push([angle.cos(), 0.0, angle.sin()]);
+            mesh.uvs.push([u, y_step / h]);
+        }
+    }
+
+    SynthesizedProp {
+        prop_type: MunicipalPropType::Lantern,
+        mesh,
+        sockets: vec![
+            "SOCKET_grip_handle".to_string(),
+            "SOCKET_fx_light".to_string(),
+            "SOCKET_fx_smoke".to_string(),
+        ],
+        collider_type: blender_mcp_geom::ColliderType::Convex,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_barrel_synthesis() {
+        let params = PropSynthParams {
+            prop_type: MunicipalPropType::WesternBarrel,
+            scale: 1.0,
+            distress: 0.1,
+        };
+        let prop = synthesize_municipal_prop(&params);
+        assert_eq!(prop.prop_type, MunicipalPropType::WesternBarrel);
+        assert!(prop.mesh.triangle_count() > 100);
+        assert!(prop.sockets.contains(&"SOCKET_grip_primary".to_string()));
+        assert_eq!(prop.collider_type, blender_mcp_geom::ColliderType::Capsule);
+    }
+
+    #[test]
+    fn test_crate_synthesis() {
+        let params = PropSynthParams {
+            prop_type: MunicipalPropType::WoodenCrate,
+            scale: 1.0,
+            distress: 0.0,
+        };
+        let prop = synthesize_municipal_prop(&params);
+        assert_eq!(prop.collider_type, blender_mcp_geom::ColliderType::Box);
+        assert_eq!(prop.mesh.triangle_count(), 12);
     }
 }
 

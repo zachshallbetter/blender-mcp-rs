@@ -12,6 +12,7 @@ blender-mcp-protocol = { path = "../blender-mcp-protocol" }
 blender-mcp-ipc = { path = "../blender-mcp-ipc" }
 blender-mcp-geom = { path = "../blender-mcp-geom" }
 blender-mcp-pbr = { path = "../blender-mcp-pbr" }
+blender-mcp-synth = { path = "../blender-mcp-synth" }
 
 tokio.workspace = true
 serde.workspace = true

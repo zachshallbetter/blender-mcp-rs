@@ -5,13 +5,14 @@ members = [
     "crates/blender-mcp-ipc",
     "crates/blender-mcp-geom",
     "crates/blender-mcp-pbr",
+    "crates/blender-mcp-synth",
     "crates/blender-mcp-core",
     "crates/blender-mcp-cli",
 ]
 resolver = "2"
 
 [workspace.package]
-version = "0.2.0"
+version = "0.3.0"
 edition = "2021"
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/SnackStudio/blender-mcp-rs"

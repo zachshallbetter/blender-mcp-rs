@@ -74,10 +74,12 @@ Upstream Python implementations (`blendermcp.org`) suffer from severe architectu
 
 - **`blender-mcp-reflect`**: Type reflection, parameter introspection, automatic JSON Schema derivation, and dynamic tool dispatch.
 - **`blender-mcp-protocol`**: Pure, zero-allocation Model Context Protocol JSON-RPC 2.0 specification implementation.
-- **`blender-mcp-ipc`**: Sub-millisecond IPC over Unix Domain Sockets (`.sock`), Windows Named Pipes (`\\.\pipe\`), and cross-platform Shared Memory (`memmap2`).
-- **`blender-mcp-geom`**: Native 3D geometry engine powered by Rapier3D / Parry for instant convex hull collision generation (`UCX_`), quadric mesh decimation (`_LOD1`, `_LOD2`), and glTF parsing.
-- **`blender-mcp-core`**: The central daemon coordinating sessions, tool execution, telemetry, and cancellation tokens.
-- **`blender-mcp-cli`**: The unified binary (`blender-mcp`) providing agent auto-configuration, direct pipeline execution, and daemon management.
+- **`blender-mcp-ipc`**: Sub-millisecond IPC and zero-copy shared memory framebuffer ring buffer (`memmap2`) for 60 FPS viewport streaming.
+- **`blender-mcp-geom`**: Native 3D geometry engine powered by Rapier3D / Parry for convex collision hulls (`UCX_`, `UBX_`, `UCP_`) and Spatial CSG (`rr-csg-0.1+3d`).
+- **`blender-mcp-pbr`**: SIMD texture channel packing for Ambient Occlusion, Roughness, and Metallic (ORM) maps.
+- **`blender-mcp-synth`**: Procedural asset synthesis engine (desert flora, municipal props, and assembly grammars).
+- **`blender-mcp-core`**: The central daemon coordinating sessions, safe mode sandbox, and the 12-tool reflective registry.
+- **`blender-mcp-cli`**: The unified binary (`blender-mcp`) providing agent auto-configuration, direct pipeline execution, and addon lifecycle management.
 
 ---
 

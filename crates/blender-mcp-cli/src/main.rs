@@ -1,3 +1,6 @@
+pub mod addon_manager;
+pub mod client_manager;
+
 use std::path::{Path, PathBuf};
 use clap::{Args, Parser, Subcommand};
 use blender_mcp_core::BlenderMcpServer;
@@ -37,6 +40,9 @@ enum Commands {
 
     /// Extract a formal 3D Compiler Semantic Graph (rr-csg-0.1+3d) from Blender
     Csg(CsgArgs),
+
+    /// Manage companion Blender addon installation and status
+    Addon(AddonArgs),
 }
 
 #[derive(Args)]
@@ -175,6 +181,26 @@ enum ClientAction {
     /// Generate an MCP configuration snippet for a client
     GenerateConfig {
         client: String,
+    },
+}
+
+#[derive(Args)]
+struct AddonArgs {
+    #[command(subcommand)]
+    action: AddonAction,
+}
+
+#[derive(Subcommand)]
+enum AddonAction {
+    /// Detect installed Blender versions and check companion addon status
+    Status {
+        #[arg(long)]
+        json: bool,
+    },
+    /// Install or update the companion addon for detected Blender versions
+    Install {
+        #[arg(long)]
+        blender_version: Option<String>,
     },
 }
 
@@ -324,28 +350,22 @@ async fn main() -> Result<(), anyhow::Error> {
         Some(Commands::Client(args)) => {
             match args.action {
                 ClientAction::List { json } => {
-                    let clients = serde_json::json!({
-                        "clients": [
-                            { "name": "claude-code", "supported": true, "type": "cli" },
-                            { "name": "antigravity", "supported": true, "type": "ide" },
-                            { "name": "cursor", "supported": true, "type": "editor" },
-                            { "name": "codex", "supported": true, "type": "cli" },
-                            { "name": "gemini", "supported": true, "type": "cli" }
-                        ]
-                    });
+                    let clients = client_manager::list_detected_clients();
                     if json {
                         println!("{}", serde_json::to_string_pretty(&clients)?);
                     } else {
-                        println!("Supported MCP Agent Clients:");
-                        println!("  • claude-code   (Claude Code CLI)");
-                        println!("  • antigravity   (Google Antigravity IDE)");
-                        println!("  • cursor        (Cursor Editor)");
-                        println!("  • codex         (OpenAI Codex / ChatGPT)");
-                        println!("  • gemini        (Gemini CLI)");
+                        println!("Supported & Detected MCP Agent Clients:");
+                        for c in &clients {
+                            let status = if c.is_configured { "configured ✅" } else { "not configured" };
+                            println!("  • {:<15} ({}) - {} [{}]", c.name, c.client_type, c.config_path.display(), status);
+                        }
                     }
                 }
                 ClientAction::Add { client, scope } => {
-                    println!("Configured '{}' (scope: {}) for blender-mcp-rs.", client, scope);
+                    match client_manager::configure_client(&client, &scope) {
+                        Ok(p) => println!("Successfully configured '{}' (scope: {}) at: {}", client, scope, p.display()),
+                        Err(e) => eprintln!("Failed to configure '{}': {}", client, e),
+                    }
                 }
                 ClientAction::GenerateConfig { client } => {
                     if client == "codex" {
@@ -360,6 +380,40 @@ async fn main() -> Result<(), anyhow::Error> {
                             }
                         });
                         println!("{}", serde_json::to_string_pretty(&config)?);
+                    }
+                }
+            }
+        }
+        Some(Commands::Addon(args)) => {
+            match args.action {
+                AddonAction::Status { json } => {
+                    let installs = addon_manager::detect_blender_installations();
+                    if json {
+                        println!("{}", serde_json::to_string_pretty(&installs)?);
+                    } else {
+                        println!("Detected Blender Installations & Addon Status:");
+                        if installs.is_empty() {
+                            println!("  No installed Blender version directories detected.");
+                        }
+                        for inst in &installs {
+                            let st = if inst.is_addon_installed { "INSTALLED ✅" } else { "NOT INSTALLED ❌" };
+                            println!("  • Blender {:<4} | Addon: {:<17} | Path: {}", inst.version, st, inst.addon_dir.display());
+                        }
+                    }
+                }
+                AddonAction::Install { blender_version } => {
+                    match addon_manager::install_addon(blender_version.as_deref()) {
+                        Ok(paths) => {
+                            if paths.is_empty() {
+                                println!("No matching Blender installation found to install addon.");
+                            } else {
+                                println!("Successfully installed blender-mcp-rs companion addon:");
+                                for p in paths {
+                                    println!("  ✅ {}", p.display());
+                                }
+                            }
+                        }
+                        Err(e) => eprintln!("Failed to install addon: {}", e),
                     }
                 }
             }

@@ -19,6 +19,9 @@ _server_sock = None
 _server_thread = None
 _running = False
 
+import mathutils
+import tempfile
+
 def handle_client(conn):
     buffer = b""
     try:
@@ -49,8 +52,67 @@ def dispatch_command(req):
         return rig_game_item(params)
     elif cmd_type == "craft_hero_prop":
         return craft_hero_prop(params)
+    elif cmd_type == "look":
+        return look_at(params)
+    elif cmd_type == "render_viewport_snapshot":
+        return render_viewport_snapshot(params)
     else:
         return {"status": "error", "message": f"Unknown command: {cmd_type}"}
+
+def look_at(params):
+    target_name = params.get("target", "active")
+    dist = params.get("distance", 3.0)
+    azimuth = math.radians(params.get("azimuth", 45.0))
+    elevation = math.radians(params.get("elevation", 30.0))
+
+    target_obj = bpy.context.active_object if target_name == "active" else bpy.data.objects.get(target_name)
+    target_loc = target_obj.location if target_obj else mathutils.Vector((0.0, 0.0, 0.0))
+
+    cam = bpy.context.scene.camera
+    if not cam:
+        cam_data = bpy.data.cameras.new("Agent_Camera")
+        cam = bpy.data.objects.new("Agent_Camera", cam_data)
+        bpy.context.scene.collection.objects.link(cam)
+        bpy.context.scene.camera = cam
+
+    x = target_loc.x + dist * math.cos(elevation) * math.sin(azimuth)
+    y = target_loc.y - dist * math.cos(elevation) * math.cos(azimuth)
+    z = target_loc.z + dist * math.sin(elevation)
+    cam.location = (x, y, z)
+
+    direction = target_loc - cam.location
+    rot_quat = direction.to_track_quat('-Z', 'Y')
+    cam.rotation_euler = rot_quat.to_euler()
+
+    return {
+        "status": "success",
+        "camera": cam.name,
+        "location": list(cam.location),
+        "target": target_name,
+        "distance": dist,
+    }
+
+def render_viewport_snapshot(params):
+    width = params.get("width", 1080)
+    height = params.get("height", 1080)
+
+    bpy.context.scene.render.resolution_x = width
+    bpy.context.scene.render.resolution_y = height
+    bpy.context.scene.render.image_settings.file_format = 'PNG'
+
+    temp_path = os.path.join(tempfile.gettempdir(), "blender_mcp_snapshot.png")
+    bpy.context.scene.render.filepath = temp_path
+    bpy.ops.render.opengl(write_still=True)
+
+    file_size = os.path.getsize(temp_path) if os.path.exists(temp_path) else 0
+
+    return {
+        "status": "success",
+        "snapshot_path": temp_path,
+        "width": width,
+        "height": height,
+        "size_bytes": file_size,
+    }
 
 def get_scene_info():
     objects = []
