@@ -57,8 +57,18 @@ def dispatch_command(req):
 
     if cmd_type == "get_addon_info":
         return get_addon_info()
-    elif cmd_type == "get_scene_info" or cmd_type == "list_scene_items":
+    elif cmd_type == "get_scene_info":
         return get_scene_info()
+    elif cmd_type == "list_scene_items":
+        return list_scene_items()
+    elif cmd_type == "get_object_resource":
+        return get_object_resource(params.get("name", ""))
+    elif cmd_type == "get_material_resource":
+        return get_material_resource(params.get("name", ""))
+    elif cmd_type == "get_collection_resource":
+        return get_collection_resource(params.get("name", ""))
+    elif cmd_type == "viewport_pick":
+        return viewport_pick(params)
     elif cmd_type == "execute_code":
         return execute_code(params.get("code", ""))
     elif cmd_type == "rig_game_item":
@@ -210,6 +220,147 @@ def get_scene_info():
         "object_count": len(objects),
         "active_object": bpy.context.active_object.name if bpy.context.active_object else None,
     }
+
+def list_scene_items():
+    items = []
+    for obj in bpy.context.scene.objects:
+        items.append({
+            "name": obj.name,
+            "kind": "object",
+            "type": obj.type,
+            "uri": f"blender://objects/{obj.name}",
+            "mention_uri": f"mention://objects/{obj.name}",
+            "description": f"{obj.type} at ({obj.location.x:.2f}, {obj.location.y:.2f}, {obj.location.z:.2f})",
+        })
+    for mat in bpy.data.materials:
+        items.append({
+            "name": mat.name,
+            "kind": "material",
+            "type": "MATERIAL",
+            "uri": f"blender://materials/{mat.name}",
+            "mention_uri": f"mention://materials/{mat.name}",
+            "description": f"Material (nodes: {mat.use_nodes}, users: {mat.users})",
+        })
+    for col in bpy.data.collections:
+        items.append({
+            "name": col.name,
+            "kind": "collection",
+            "type": "COLLECTION",
+            "uri": f"blender://collections/{col.name}",
+            "mention_uri": f"mention://collections/{col.name}",
+            "description": f"Collection ({len(col.objects)} objects)",
+        })
+    return {
+        "status": "success",
+        "items": items,
+        "count": len(items),
+    }
+
+def get_object_resource(name):
+    obj = bpy.data.objects.get(name)
+    if not obj:
+        return {"status": "error", "message": f"Object not found: {name}"}
+    return {
+        "status": "success",
+        "name": obj.name,
+        "type": obj.type,
+        "location": [round(v, 4) for v in obj.location],
+        "rotation": [round(v, 4) for v in obj.rotation_euler],
+        "scale": [round(v, 4) for v in obj.scale],
+        "dimensions": [round(v, 4) for v in obj.dimensions],
+        "visible": obj.visible_get(),
+        "parent": obj.parent.name if obj.parent else None,
+        "children": [c.name for c in obj.children],
+        "modifiers": [{"name": m.name, "type": m.type} for m in obj.modifiers],
+        "material_slots": [slot.material.name for slot in obj.material_slots if slot.material],
+    }
+
+def get_material_resource(name):
+    mat = bpy.data.materials.get(name)
+    if not mat:
+        return {"status": "error", "message": f"Material not found: {name}"}
+    nodes = []
+    links = []
+    if mat.use_nodes and mat.node_tree:
+        for n in mat.node_tree.nodes:
+            nodes.append({
+                "name": n.name,
+                "bl_idname": n.bl_idname,
+                "label": n.label or n.name,
+                "location": [round(v, 1) for v in n.location],
+            })
+        for l in mat.node_tree.links:
+            links.append({
+                "from_node": l.from_node.name,
+                "from_socket": l.from_socket.name,
+                "to_node": l.to_node.name,
+                "to_socket": l.to_socket.name,
+            })
+    return {
+        "status": "success",
+        "name": mat.name,
+        "use_nodes": mat.use_nodes,
+        "users": mat.users,
+        "nodes": nodes,
+        "links": links,
+    }
+
+def get_collection_resource(name):
+    col = bpy.data.collections.get(name)
+    if not col:
+        return {"status": "error", "message": f"Collection not found: {name}"}
+    return {
+        "status": "success",
+        "name": col.name,
+        "objects": [o.name for o in col.objects],
+        "children": [c.name for c in col.children],
+    }
+
+def viewport_pick(params):
+    x = float(params.get("x", 0.5))
+    y = float(params.get("y", 0.5))
+    seq = params.get("seq", 0)
+
+    depsgraph = bpy.context.evaluated_depsgraph_get()
+    scene = bpy.context.scene
+
+    cam = scene.camera
+    if cam:
+        cam_eval = cam.evaluated_get(depsgraph)
+        origin = cam_eval.matrix_world.translation
+        view_mat = cam_eval.matrix_world
+        direction = (view_mat.to_3x3() @ mathutils.Vector((x - 0.5, y - 0.5, -1.0))).normalized()
+    else:
+        origin = mathutils.Vector(((x - 0.5) * 10.0, (y - 0.5) * 10.0, 10.0))
+        direction = mathutils.Vector((0.0, 0.0, -1.0))
+
+    hit, location, normal, index, hit_obj, matrix = scene.ray_cast(depsgraph, origin, direction)
+
+    if hit and hit_obj:
+        for o in bpy.context.selected_objects:
+            o.select_set(False)
+        hit_obj.select_set(True)
+        bpy.context.view_layer.objects.active = hit_obj
+
+        mat_name = hit_obj.active_material.name if hit_obj.active_material else None
+        return {
+            "status": "success",
+            "hit": True,
+            "object_name": hit_obj.name,
+            "location": [round(v, 4) for v in location],
+            "normal": [round(v, 4) for v in normal],
+            "distance": round((location - origin).length, 4),
+            "face_index": index,
+            "material": mat_name,
+            "seq": seq,
+        }
+    else:
+        return {
+            "status": "success",
+            "hit": False,
+            "location": None,
+            "seq": seq,
+        }
 
 def execute_code(code):
     try:

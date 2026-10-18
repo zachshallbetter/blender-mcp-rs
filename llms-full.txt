@@ -1598,6 +1598,29 @@ struct GenerateArmatureRigParams {
 
 fn default_rig_template() -> String { "prop_container".to_string() }
 
+#[derive(Deserialize, JsonSchema)]
+struct SearchMentionsParams {
+    /// Fuzzy search query for object, material, or collection names (default: empty string)
+    #[serde(default)]
+    query: String,
+    /// Maximum number of mention candidates to return (default: 30)
+    #[serde(default = "default_mentions_limit")]
+    limit: usize,
+}
+
+fn default_mentions_limit() -> usize { 30 }
+
+#[derive(Deserialize, JsonSchema)]
+struct ViewportPickParams {
+    /// Normalized horizontal screen coordinate in active viewport (0.0 = left, 1.0 = right)
+    x: f64,
+    /// Normalized vertical screen coordinate in active viewport (0.0 = bottom, 1.0 = top)
+    y: f64,
+    /// Sequence counter from client viewport canvas
+    #[serde(default)]
+    seq: u64,
+}
+
 pub fn create_default_registry(ipc: Arc<BlenderIpcClient>, trajectory: Arc<TrajectoryRecorder>) -> ToolRegistry {
     let mut registry = ToolRegistry::new();
 
@@ -2459,6 +2482,64 @@ pub fn create_default_registry(ipc: Arc<BlenderIpcClient>, trajectory: Arc<Traje
         },
     );
 
+    // 47. search_mentions
+    let ipc_mentions = Arc::clone(&ipc);
+    registry.register_fn(
+        "search_mentions",
+        "Search active Blender scene objects, materials, and collections for fuzzy autocomplete @mentions",
+        move |params: SearchMentionsParams| {
+            let ipc = Arc::clone(&ipc_mentions);
+            async move {
+                let cmd = serde_json::json!({
+                    "type": "list_scene_items",
+                    "params": {}
+                });
+                let resp = ipc.send_command(&cmd).await.map_err(|e| format!("Search mentions failed: {}", e))?;
+                let empty_vec = Vec::new();
+                let items = resp.get("items").and_then(|v| v.as_array()).unwrap_or(&empty_vec);
+
+                let query = params.query.to_lowercase();
+                let filtered: Vec<serde_json::Value> = items.iter().filter(|item| {
+                    if query.is_empty() {
+                        true
+                    } else {
+                        let name = item.get("name").and_then(|n| n.as_str()).unwrap_or("").to_lowercase();
+                        let kind = item.get("kind").and_then(|k| k.as_str()).unwrap_or("").to_lowercase();
+                        let desc = item.get("description").and_then(|d| d.as_str()).unwrap_or("").to_lowercase();
+                        name.contains(&query) || kind.contains(&query) || desc.contains(&query)
+                    }
+                }).take(params.limit).cloned().collect();
+
+                Ok(serde_json::json!({
+                    "query": params.query,
+                    "total_found": filtered.len(),
+                    "mentions": filtered
+                }))
+            }
+        },
+    );
+
+    // 48. viewport_pick
+    let ipc_pick = Arc::clone(&ipc);
+    registry.register_fn(
+        "viewport_pick",
+        "Raycasts a click position (x, y) into the 3D viewport, selecting the hit object and returning surface geometry details",
+        move |params: ViewportPickParams| {
+            let ipc = Arc::clone(&ipc_pick);
+            async move {
+                let cmd = serde_json::json!({
+                    "type": "viewport_pick",
+                    "params": {
+                        "x": params.x,
+                        "y": params.y,
+                        "seq": params.seq,
+                    }
+                });
+                ipc.send_command(&cmd).await.map_err(|e| format!("Viewport pick failed: {}", e))
+            }
+        },
+    );
+
     registry
 }
 
@@ -2500,7 +2581,7 @@ impl BlenderMcpServer {
                 JsonRpcResponse::success(req.id, serde_json::to_value(res).unwrap())
             }
             "resources/list" => {
-                let resources = vec![
+                let mut resources = vec![
                     ResourceDefinition {
                         uri: "blender://viewport".to_string(),
                         name: "Blender Live Viewport".to_string(),
@@ -2514,37 +2595,95 @@ impl BlenderMcpServer {
                         mime_type: Some("application/json".to_string()),
                     },
                 ];
+
+                // Dynamically discover live scene datablocks if connected
+                if let Ok(resp) = self.context.ipc.send_command(&serde_json::json!({ "type": "list_scene_items" })).await {
+                    if let Some(items) = resp.get("items").and_then(|v| v.as_array()) {
+                        for item in items {
+                            if let (Some(uri), Some(name), Some(desc)) = (
+                                item.get("uri").and_then(|u| u.as_str()),
+                                item.get("name").and_then(|n| n.as_str()),
+                                item.get("description").and_then(|d| d.as_str()),
+                            ) {
+                                resources.push(ResourceDefinition {
+                                    uri: uri.to_string(),
+                                    name: name.to_string(),
+                                    description: Some(desc.to_string()),
+                                    mime_type: Some("application/json".to_string()),
+                                });
+                            }
+                        }
+                    }
+                }
+
                 let val = serde_json::json!({ "resources": resources });
                 JsonRpcResponse::success(req.id, val)
             }
             "resources/read" => {
                 let params = req.params.unwrap_or(serde_json::Value::Null);
                 let uri = params.get("uri").and_then(|v| v.as_str()).unwrap_or("");
-                match uri {
-                    "blender://viewport" => {
-                        let html = viewport_template::generate_viewport_html();
-                        let contents = vec![ResourceContent {
-                            uri: uri.to_string(),
-                            mime_type: Some("text/html".to_string()),
-                            text: Some(html.to_string()),
-                            blob: None,
-                        }];
-                        JsonRpcResponse::success(req.id, serde_json::json!({ "contents": contents }))
-                    }
-                    "blender://scene_summary" => {
-                        let scene_info = self.context.ipc.send_command(&serde_json::json!({
-                            "type": "get_scene_info"
-                        })).await.unwrap_or_else(|_| serde_json::json!({ "status": "disconnected" }));
-                        let text = serde_json::to_string_pretty(&scene_info).unwrap_or_default();
-                        let contents = vec![ResourceContent {
-                            uri: uri.to_string(),
-                            mime_type: Some("application/json".to_string()),
-                            text: Some(text),
-                            blob: None,
-                        }];
-                        JsonRpcResponse::success(req.id, serde_json::json!({ "contents": contents }))
-                    }
-                    _ => JsonRpcResponse::error(req.id, -32602, format!("Resource URI '{}' not found", uri)),
+                if uri == "blender://viewport" {
+                    let html = viewport_template::generate_viewport_html();
+                    let contents = vec![ResourceContent {
+                        uri: uri.to_string(),
+                        mime_type: Some("text/html".to_string()),
+                        text: Some(html.to_string()),
+                        blob: None,
+                    }];
+                    JsonRpcResponse::success(req.id, serde_json::json!({ "contents": contents }))
+                } else if uri == "blender://scene_summary" {
+                    let scene_info = self.context.ipc.send_command(&serde_json::json!({
+                        "type": "get_scene_info"
+                    })).await.unwrap_or_else(|_| serde_json::json!({ "status": "disconnected" }));
+                    let text = serde_json::to_string_pretty(&scene_info).unwrap_or_default();
+                    let contents = vec![ResourceContent {
+                        uri: uri.to_string(),
+                        mime_type: Some("application/json".to_string()),
+                        text: Some(text),
+                        blob: None,
+                    }];
+                    JsonRpcResponse::success(req.id, serde_json::json!({ "contents": contents }))
+                } else if let Some(object_name) = uri.strip_prefix("blender://objects/") {
+                    let res = self.context.ipc.send_command(&serde_json::json!({
+                        "type": "get_object_resource",
+                        "params": { "name": object_name }
+                    })).await.unwrap_or_else(|e| serde_json::json!({ "status": "error", "message": e.to_string() }));
+                    let text = serde_json::to_string_pretty(&res).unwrap_or_default();
+                    let contents = vec![ResourceContent {
+                        uri: uri.to_string(),
+                        mime_type: Some("application/json".to_string()),
+                        text: Some(text),
+                        blob: None,
+                    }];
+                    JsonRpcResponse::success(req.id, serde_json::json!({ "contents": contents }))
+                } else if let Some(mat_name) = uri.strip_prefix("blender://materials/") {
+                    let res = self.context.ipc.send_command(&serde_json::json!({
+                        "type": "get_material_resource",
+                        "params": { "name": mat_name }
+                    })).await.unwrap_or_else(|e| serde_json::json!({ "status": "error", "message": e.to_string() }));
+                    let text = serde_json::to_string_pretty(&res).unwrap_or_default();
+                    let contents = vec![ResourceContent {
+                        uri: uri.to_string(),
+                        mime_type: Some("application/json".to_string()),
+                        text: Some(text),
+                        blob: None,
+                    }];
+                    JsonRpcResponse::success(req.id, serde_json::json!({ "contents": contents }))
+                } else if let Some(col_name) = uri.strip_prefix("blender://collections/") {
+                    let res = self.context.ipc.send_command(&serde_json::json!({
+                        "type": "get_collection_resource",
+                        "params": { "name": col_name }
+                    })).await.unwrap_or_else(|e| serde_json::json!({ "status": "error", "message": e.to_string() }));
+                    let text = serde_json::to_string_pretty(&res).unwrap_or_default();
+                    let contents = vec![ResourceContent {
+                        uri: uri.to_string(),
+                        mime_type: Some("application/json".to_string()),
+                        text: Some(text),
+                        blob: None,
+                    }];
+                    JsonRpcResponse::success(req.id, serde_json::json!({ "contents": contents }))
+                } else {
+                    JsonRpcResponse::error(req.id, -32602, format!("Resource URI '{}' not found", uri))
                 }
             }
             "tools/list" => {
@@ -2685,6 +2824,8 @@ mod tests {
         assert!(tool_names.contains(&"apply_scene_csg"));
         assert!(tool_names.contains(&"generate_lods_and_collision"));
         assert!(tool_names.contains(&"generate_armature_rig"));
+        assert!(tool_names.contains(&"search_mentions"));
+        assert!(tool_names.contains(&"viewport_pick"));
 
         // Test resources/list
         let res_list_req = JsonRpcRequest {
@@ -2697,7 +2838,7 @@ mod tests {
         assert!(res_list_resp.error.is_none());
         let res_list = res_list_resp.result.unwrap();
         let resources = res_list.get("resources").unwrap().as_array().unwrap();
-        assert_eq!(resources.len(), 2);
+        assert!(resources.len() >= 2);
         assert_eq!(resources[0].get("uri").unwrap(), "blender://viewport");
         assert_eq!(resources[1].get("uri").unwrap(), "blender://scene_summary");
 
@@ -2718,6 +2859,22 @@ mod tests {
         let html_text = contents[0].get("text").unwrap().as_str().unwrap();
         assert!(html_text.contains("blender-mcp-rs Live Viewport"));
         assert!(html_text.contains("viewport-canvas"));
+
+        // Test resources/read for blender://objects/Cube
+        let res_obj_req = JsonRpcRequest {
+            jsonrpc: "2.0".to_string(),
+            id: RequestId::Number(5),
+            method: "resources/read".to_string(),
+            params: Some(serde_json::json!({
+                "uri": "blender://objects/Cube"
+            })),
+        };
+        let res_obj_resp = server.handle_request(res_obj_req).await;
+        assert!(res_obj_resp.error.is_none());
+        let obj_val = res_obj_resp.result.unwrap();
+        let obj_contents = obj_val.get("contents").unwrap().as_array().unwrap();
+        assert_eq!(obj_contents.len(), 1);
+        assert_eq!(obj_contents[0].get("uri").unwrap(), "blender://objects/Cube");
     }
 }
 

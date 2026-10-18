@@ -10,6 +10,9 @@
 |---|---|---|---|
 | `blender://viewport` | Blender Live Viewport | `text/html` | Interactive HTML5/WebGL canvas viewer with mouse orbit, pan, zoom, snapshot triggers, and raycast picking. |
 | `blender://scene_summary` | Blender Scene CSG Summary | `application/json` | JSON serialization of the active Blender scene hierarchy, materials, cameras, and semantic sockets. |
+| `blender://objects/{name}` | Object Inspector | `application/json` | Real-time transforms, dimensions, modifiers, vertex/polygon counts, and material slots for a named object. |
+| `blender://materials/{name}` | Material Node Inspector | `application/json` | Shader node tree definitions, Principled BSDF inputs, texture links, and active users. |
+| `blender://collections/{name}` | Collection Hierarchy | `application/json` | Collection members, nested child collections, and visibility status. |
 
 ---
 

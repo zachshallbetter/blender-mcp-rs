@@ -42,6 +42,13 @@ Empirically audits a `.glb` asset against game engine performance budgets (trian
 - **Parameters**:
   - `file_path` *(string, required)*: Path to `.glb` file.
 
+### `search_mentions`
+Performs fast fuzzy autocomplete search across Blender scene objects, materials, and collections, returning `@mention` tokens and semantic URIs.
+- **Parameters**:
+  - `query` *(string, optional, default: "")*: Fuzzy search query.
+  - `limit` *(integer, optional, default: 30)*: Maximum candidates to return.
+- **Returns**: Formatted list of matches with `name`, `kind`, `uri` (`mention://objects/*`), and `description`.
+
 ---
 
 ## 2. Viewport & Camera Control
@@ -93,7 +100,13 @@ Focuses and expands object data properties in the Properties workspace.
 Switches active Blender workspace to the one containing the requested space type (e.g. `NODE_EDITOR`, `VIEW_3D`).
 - **Parameters**:
   - `space_type` *(string, required)*: Space identifier.
-  - `allow_edits` *(boolean, optional, default: false)*: Create tab if missing.
+### `viewport_pick`
+Raycasts normalized screen coordinates $(x, y)$ from the active 3D camera into the scene, selecting the hit object in Blender and returning exact world hit position, distance, surface normal, and polygon material.
+- **Parameters**:
+  - `x` *(float, required)*: Normalized horizontal screen coordinate (0.0 to 1.0).
+  - `y` *(float, required)*: Normalized vertical screen coordinate (0.0 to 1.0).
+  - `seq` *(integer, optional, default: 0)*: Client sequence number.
+- **Returns**: Hit status, `object_name`, `location: [x, y, z]`, `normal: [nx, ny, nz]`, `distance`, `face_index`, and `material`.
 
 ---
 
