@@ -131,6 +131,7 @@ dependencies = [
  "blender-mcp-core",
  "blender-mcp-geom",
  "blender-mcp-ipc",
+ "blender-mcp-pbr",
  "blender-mcp-protocol",
  "clap",
  "serde",
@@ -148,6 +149,7 @@ dependencies = [
  "async-trait",
  "blender-mcp-geom",
  "blender-mcp-ipc",
+ "blender-mcp-pbr",
  "blender-mcp-protocol",
  "blender-mcp-reflect",
  "futures",
@@ -184,6 +186,17 @@ dependencies = [
  "serde_json",
  "thiserror 2.0.21",
  "tokio",
+ "tracing",
+]
+
+[[package]]
+name = "blender-mcp-pbr"
+version = "0.1.0"
+dependencies = [
+ "image",
+ "serde",
+ "serde_json",
+ "thiserror 2.0.21",
  "tracing",
 ]
 

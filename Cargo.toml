@@ -4,6 +4,7 @@ members = [
     "crates/blender-mcp-protocol",
     "crates/blender-mcp-ipc",
     "crates/blender-mcp-geom",
+    "crates/blender-mcp-pbr",
     "crates/blender-mcp-core",
     "crates/blender-mcp-cli",
 ]

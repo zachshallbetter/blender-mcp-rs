@@ -1,0 +1,14 @@
+[package]
+name = "blender-mcp-pbr"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+description = "High-performance PBR texture channel packing (ORM) and image processing for blender-mcp-rs"
+
+[dependencies]
+image = { version = "0.25", default-features = false, features = ["png", "jpeg"] }
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+tracing.workspace = true
