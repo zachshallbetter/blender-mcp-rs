@@ -2,7 +2,7 @@
 
 **Epic:** EPIC-1 (Namespace & Attribution Standardization)  
 **Owner:** A (Autonomous Agent)  
-**Status:** doing  
+**Status:** done  
 **Target:** 2026-10-17  
 
 ---
