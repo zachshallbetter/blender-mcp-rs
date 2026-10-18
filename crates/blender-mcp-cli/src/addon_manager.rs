@@ -49,7 +49,7 @@ pub fn detect_blender_installations() -> Vec<BlenderInstallation> {
                     let path = entry.path();
                     if path.is_dir() {
                         let name = entry.file_name().to_string_lossy().to_string();
-                        if name.chars().next().map_or(false, |c| c.is_ascii_digit()) {
+                        if name.chars().next().is_some_and(|c| c.is_ascii_digit()) {
                             let addon_dir = path.join("scripts/addons/blender_mcp");
                             let is_installed = addon_dir.join("__init__.py").exists();
                             installs.push(BlenderInstallation {
@@ -58,6 +58,35 @@ pub fn detect_blender_installations() -> Vec<BlenderInstallation> {
                                 addon_dir,
                                 is_addon_installed: is_installed,
                             });
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    #[cfg(target_os = "windows")]
+    {
+        if let Ok(app_data) = std::env::var("APPDATA") {
+            let blender_app_data = PathBuf::from(app_data).join("Blender Foundation\\Blender");
+            if blender_app_data.exists() {
+                if let Ok(entries) = std::fs::read_dir(&blender_app_data) {
+                    for entry in entries.flatten() {
+                        let path = entry.path();
+                        if path.is_dir() {
+                            let name = entry.file_name().to_string_lossy().to_string();
+                            if name.chars().next().is_some_and(|c| c.is_ascii_digit()) {
+                                let addon_dir = path.join("scripts\\addons\\blender_mcp");
+                                let is_installed = addon_dir.join("__init__.py").exists();
+                                installs.push(BlenderInstallation {
+                                    version: name,
+                                    path: PathBuf::from(
+                                        "C:\\Program Files\\Blender Foundation\\Blender\\blender.exe",
+                                    ),
+                                    addon_dir,
+                                    is_addon_installed: is_installed,
+                                });
+                            }
                         }
                     }
                 }
