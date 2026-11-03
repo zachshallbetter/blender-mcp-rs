@@ -1,5 +1,5 @@
 use serde::{Deserialize, Serialize};
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct BlenderInstallation {
@@ -11,8 +11,11 @@ pub struct BlenderInstallation {
 
 pub fn detect_blender_installations() -> Vec<BlenderInstallation> {
     let mut installs = Vec::new();
+    // HOME-relative locations apply on macOS and Linux; Windows uses %APPDATA% below.
+    #[cfg(not(target_os = "windows"))]
     let home = std::env::var("HOME").unwrap_or_else(|_| ".".to_string());
-    let home_path = Path::new(&home);
+    #[cfg(not(target_os = "windows"))]
+    let home_path = std::path::Path::new(&home);
 
     #[cfg(target_os = "macos")]
     {

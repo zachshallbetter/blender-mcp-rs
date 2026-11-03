@@ -2,7 +2,7 @@
 
 > **The high-performance, reflective Rust Model Context Protocol (MCP) server & spatial agent engine for Blender.**
 
-[![License: MIT/Apache-2.0](https://img.shields.io/badge/License-MIT%20or%20Apache--2.0-blue.svg)](LICENSE)
+[![License: MIT/Apache-2.0](https://img.shields.io/badge/License-MIT%20or%20Apache--2.0-blue.svg)](#license)
 [![Rust: 2021 Edition](https://img.shields.io/badge/Rust-2021%20Edition-orange.svg)](https://www.rust-lang.org)
 [![MCP: Specification 2024-11-05](https://img.shields.io/badge/MCP-2024--11--05-green.svg)](https://modelcontextprotocol.io)
 

@@ -5,7 +5,15 @@ All notable changes to `blender-mcp-rs` will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html) under the governance of `VERSIONING.md` and `AUTHORITY.md`.
 
-## [0.5.0] - 2026-10-18
+## [0.5.0] - 2026-11-03
+
+### Fixed
+- Windows build: `detect_blender_installations` declared HOME-relative paths that Windows never uses, which failed CI under `-D warnings`. They are now scoped to macOS and Linux.
+- `VERSION` (the canonical release version per `VERSIONING.md`) said `0.4.0` while the workspace and this changelog said `0.5.0`; it now says `0.5.0`.
+
+### Added
+- `LICENSE-MIT` and `LICENSE-APACHE`, matching the declared `MIT OR Apache-2.0` licence that the README already referenced.
+- Homebrew: `brew install zachshallbetter/tap/blender-mcp` (see https://github.com/zachshallbetter/homebrew-tap).
 
 ### Added
 - **Interactive Scene Discovery & Mentions (`search_mentions`)**:

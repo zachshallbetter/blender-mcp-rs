@@ -1,5 +1,5 @@
 # blender-mcp-rs: Full Technical Context Corpus
-Version: v0.4.0
+Version: v0.5.0
 Authors: Zachary Shallbetter (@zachshallbetter)
 License: MIT OR Apache-2.0
 
@@ -182,7 +182,7 @@ All 3D tools and asset generators in this repository must enforce:
 
 > **The high-performance, reflective Rust Model Context Protocol (MCP) server & spatial agent engine for Blender.**
 
-[![License: MIT/Apache-2.0](https://img.shields.io/badge/License-MIT%20or%20Apache--2.0-blue.svg)](LICENSE)
+[![License: MIT/Apache-2.0](https://img.shields.io/badge/License-MIT%20or%20Apache--2.0-blue.svg)](#license)
 [![Rust: 2021 Edition](https://img.shields.io/badge/Rust-2021%20Edition-orange.svg)](https://www.rust-lang.org)
 [![MCP: Specification 2024-11-05](https://img.shields.io/badge/MCP-2024--11--05-green.svg)](https://modelcontextprotocol.io)
 
@@ -482,7 +482,7 @@ anyhow.workspace = true
 ## CRATE FILE: crates/blender-mcp-cli/src/addon_manager.rs
 
 use serde::{Deserialize, Serialize};
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct BlenderInstallation {
@@ -494,8 +494,11 @@ pub struct BlenderInstallation {
 
 pub fn detect_blender_installations() -> Vec<BlenderInstallation> {
     let mut installs = Vec::new();
+    // HOME-relative locations apply on macOS and Linux; Windows uses %APPDATA% below.
+    #[cfg(not(target_os = "windows"))]
     let home = std::env::var("HOME").unwrap_or_else(|_| ".".to_string());
-    let home_path = Path::new(&home);
+    #[cfg(not(target_os = "windows"))]
+    let home_path = std::path::Path::new(&home);
 
     #[cfg(target_os = "macos")]
     {
@@ -532,7 +535,7 @@ pub fn detect_blender_installations() -> Vec<BlenderInstallation> {
                     let path = entry.path();
                     if path.is_dir() {
                         let name = entry.file_name().to_string_lossy().to_string();
-                        if name.chars().next().map_or(false, |c| c.is_ascii_digit()) {
+                        if name.chars().next().is_some_and(|c| c.is_ascii_digit()) {
                             let addon_dir = path.join("scripts/addons/blender_mcp");
                             let is_installed = addon_dir.join("__init__.py").exists();
                             installs.push(BlenderInstallation {
@@ -541,6 +544,35 @@ pub fn detect_blender_installations() -> Vec<BlenderInstallation> {
                                 addon_dir,
                                 is_addon_installed: is_installed,
                             });
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    #[cfg(target_os = "windows")]
+    {
+        if let Ok(app_data) = std::env::var("APPDATA") {
+            let blender_app_data = PathBuf::from(app_data).join("Blender Foundation\\Blender");
+            if blender_app_data.exists() {
+                if let Ok(entries) = std::fs::read_dir(&blender_app_data) {
+                    for entry in entries.flatten() {
+                        let path = entry.path();
+                        if path.is_dir() {
+                            let name = entry.file_name().to_string_lossy().to_string();
+                            if name.chars().next().is_some_and(|c| c.is_ascii_digit()) {
+                                let addon_dir = path.join("scripts\\addons\\blender_mcp");
+                                let is_installed = addon_dir.join("__init__.py").exists();
+                                installs.push(BlenderInstallation {
+                                    version: name,
+                                    path: PathBuf::from(
+                                        "C:\\Program Files\\Blender Foundation\\Blender\\blender.exe",
+                                    ),
+                                    addon_dir,
+                                    is_addon_installed: is_installed,
+                                });
+                            }
                         }
                     }
                 }
@@ -1160,9 +1192,9 @@ async fn main() -> Result<(), anyhow::Error> {
 
             let mut orm_result = None;
             if args.pack_orm {
-                let out_path = args.output_orm.unwrap_or_else(|| {
-                    PathBuf::from(format!("{}_ORM.png", args.object_name))
-                });
+                let out_path = args
+                    .output_orm
+                    .unwrap_or_else(|| PathBuf::from(format!("{}_ORM.png", args.object_name)));
                 let pbr_res = blender_mcp_pbr::pack_orm(
                     args.ao.as_deref(),
                     args.roughness.as_deref(),
