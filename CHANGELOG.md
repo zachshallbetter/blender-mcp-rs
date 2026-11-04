@@ -5,6 +5,14 @@ All notable changes to `blender-mcp-rs` will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html) under the governance of `VERSIONING.md` and `AUTHORITY.md`.
 
+## [0.5.1] - 2026-11-03
+
+### Changed
+- `blender-mcp addon install` now also turns the add-on on: it runs Blender once without a window and saves the add-on in Blender's preferences, so it loads and listens on `127.0.0.1:9876` whenever Blender opens. Nothing to enable by hand. `--no-enable` keeps the old copy-only behaviour.
+- `addon install` also covers a Blender that has never been opened (no per-version folder yet), using the installed app's version.
+- If Blender is open, `addon install` leaves its preferences alone (Blender would overwrite them on quit) and says to quit and run it again.
+- `addon install` exits with status 1 when copying the add-on fails.
+
 ## [0.5.0] - 2026-11-03
 
 ### Fixed

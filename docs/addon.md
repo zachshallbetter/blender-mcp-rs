@@ -11,6 +11,12 @@ The companion addon (`addon/blender_mcp/__init__.py`) runs as a lightweight daem
 blender-mcp addon install
 ```
 
+This copies the add-on into the user add-ons folder of each Blender version on this machine (including a Blender that has never been opened) and turns it on in that Blender's saved preferences, by running Blender once without a window. From then on the add-on loads every time Blender opens and listens on `127.0.0.1:9876`; there is nothing to enable by hand.
+
+- If Blender is open, the command doesn't change its preferences (Blender saves its own preferences on quit and would undo the change). Quit Blender and run it again.
+- `--no-enable` only copies the file; turn it on yourself under **Edit > Preferences > Add-ons**.
+- `--blender-version 5.2` limits it to one version.
+
 ### Method 2: Manual Blender UI Installation
 1. Open Blender.
 2. Navigate to **Edit > Preferences > Add-ons**.

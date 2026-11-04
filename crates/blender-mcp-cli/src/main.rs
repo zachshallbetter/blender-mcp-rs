@@ -248,6 +248,9 @@ enum AddonAction {
     Install {
         #[arg(long)]
         blender_version: Option<String>,
+        /// Only copy the add-on; leave turning it on in Blender's preferences to you
+        #[arg(long)]
+        no_enable: bool,
     },
 }
 
@@ -563,21 +566,40 @@ async fn main() -> Result<(), anyhow::Error> {
                     }
                 }
             }
-            AddonAction::Install { blender_version } => {
-                match addon_manager::install_addon(blender_version.as_deref()) {
-                    Ok(paths) => {
-                        if paths.is_empty() {
-                            println!("No matching Blender installation found to install addon.");
-                        } else {
-                            println!("Successfully installed blender-mcp-rs companion addon:");
-                            for p in paths {
-                                println!("  ✅ {}", p.display());
-                            }
+            AddonAction::Install {
+                blender_version,
+                no_enable,
+            } => match addon_manager::install_addon(blender_version.as_deref()) {
+                Ok(paths) => {
+                    if paths.is_empty() {
+                        println!("No matching Blender installation found to install addon.");
+                    } else {
+                        println!("Successfully installed blender-mcp-rs companion addon:");
+                        for p in &paths {
+                            println!("  ✅ {}", p.display());
                         }
                     }
-                    Err(e) => eprintln!("Failed to install addon: {}", e),
+                    let manual = "enable \"blender-mcp-rs Companion\" in Blender under Edit → Preferences → Add-ons";
+                    match addon_manager::blender_binary() {
+                            _ if no_enable || paths.is_empty() => {}
+                            None => println!("Blender's app wasn't found in the usual place: {manual}."),
+                            Some(blender) if addon_manager::blender_running(&blender) => println!(
+                                "Blender is open, and it saves its preferences when it quits. Quit Blender and run `blender-mcp addon install` again, or {manual}."
+                            ),
+                            Some(blender) => match addon_manager::enable_addon(&blender) {
+                                Ok(()) => println!(
+                                    "Enabled in Blender {}: the add-on now starts with Blender and listens on 127.0.0.1:9876.",
+                                    addon_manager::binary_version(&blender).unwrap_or_default()
+                                ),
+                                Err(e) => println!("Could not enable it automatically ({e}): {manual}."),
+                            },
+                        }
                 }
-            }
+                Err(e) => {
+                    eprintln!("Failed to install addon: {}", e);
+                    std::process::exit(1);
+                }
+            },
         },
     }
 
