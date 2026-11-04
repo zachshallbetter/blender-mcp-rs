@@ -98,9 +98,23 @@ Upstream Python implementations (`blendermcp.org`) suffer from severe architectu
 
 ### Installation
 
+With Homebrew (macOS or Linux; no Rust needed):
+
 ```bash
-cargo install --path crates/blender-mcp-cli
+brew tap zachshallbetter/tap
+brew trust zachshallbetter/tap   # Homebrew 7 and later
+brew install zachshallbetter/tap/blender-mcp
 ```
+
+Or from source: `cargo install --path crates/blender-mcp-cli` in a clone.
+
+Then install the companion add-on. Quit Blender first: the command copies the add-on into every Blender version it finds and turns it on in Blender's preferences, so it starts with Blender and listens on `127.0.0.1:9876`. There is nothing to enable by hand.
+
+```bash
+blender-mcp addon install
+```
+
+To set up Blender MCP together with the rest of the [Creative MCP](https://creativemcp.com) series (detects your apps and MCP clients, installs, registers and verifies), use `brew install zachshallbetter/tap/creative-mcp && creative-mcp setup`.
 
 ### Auto-Configure Your AI Agent
 
