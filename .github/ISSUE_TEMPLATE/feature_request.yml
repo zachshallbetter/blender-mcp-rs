@@ -1,0 +1,20 @@
+name: Feature request
+description: Propose a new tool, command or capability.
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: The behavior you want
+      description: What should the tool or command do? What is the use case?
+    validations:
+      required: true
+  - type: textarea
+    id: idea
+    attributes:
+      label: How you imagine it
+      description: A tool name and arguments, a CLI command, or a change to an existing one.
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered

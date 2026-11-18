@@ -154,6 +154,25 @@ blender-mcp lods "Chest" --pack-orm --ao ao.png --roughness rough.png --metallic
 
 ---
 
+## Verify
+
+The checks CI runs on every pull request:
+
+```bash
+cargo fmt --all -- --check
+cargo clippy --workspace --all-targets -- -D warnings
+cargo test --workspace
+cargo build --workspace --release
+```
+
+## Status and limitations
+
+The project is pre-1.0 (workspace version 0.5.1). [AGENTS.md](AGENTS.md) distinguishes documented,
+implemented, tested and empirically validated claims; read the performance figures above at the
+weakest of those levels unless a test or measurement is cited for them.
+
+---
+
 ## License
 
 Licensed under either of:
