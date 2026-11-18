@@ -1,0 +1,40 @@
+name: Bug report
+description: A tool, the CLI, the Blender add-on or a pipeline command is not behaving as documented.
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: Thanks for the report. A minimal reproduction is the fastest path to a fix.
+  - type: input
+    id: version
+    attributes:
+      label: blender-mcp version
+      description: Output of `blender-mcp --version`, or the crate and commit if built from source.
+      placeholder: blender-mcp 0.5.1
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What you expected
+      description: What should have happened. Quote the docs section if relevant.
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: What happened instead
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: Reproduction
+      description: The command or tool call, its arguments and the full output. Remove anything private.
+    validations:
+      required: true
+  - type: input
+    id: env
+    attributes:
+      label: Environment
+      placeholder: Blender version, operating system, MCP client, Rust version if built from source

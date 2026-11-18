@@ -7,6 +7,16 @@ We welcome contributions that adhere to our craftsmanship standards and formal r
 - **Rust**: Version 1.88+ (2021/2024 edition).
 - **Blender**: Version 4.0+.
 
+## Setup
+
+```bash
+cargo build --workspace     # build every crate
+cargo test --workspace      # run the tests
+```
+
+Agents and contributors alike follow [AGENTS.md](AGENTS.md); governance is in
+[AUTHORITY.md](AUTHORITY.md) and [VERSIONING.md](VERSIONING.md).
+
 ## Pre-PR Verification Gates
 
 Before submitting any pull request, ensure all gates pass cleanly:
@@ -31,3 +41,4 @@ cargo run --bin blender-mcp -- client list --json
 - Tool additions must use `blender-mcp-reflect` for typed schema derivation rather than ad-hoc JSON dictionaries.
 - 3D pipeline features must satisfy the asset craftsmanship rules defined in `Dead Hand`.
 - Commits must feature clean engineering prose without automated attribution trailers.
+- Commit subjects use a conventional prefix where one fits, for example `fix(cli): ...`, and are otherwise short prose.
